@@ -1,2 +1,5 @@
 # ICE RUSH UI tick
-# Placeholder for lobby and in-game UI updates.
+# Refreshes lobby and in-game UI values.
+
+function icerush:scoreboard/tick
+function icerush:ui/lobby
