@@ -3,3 +3,4 @@
 
 scoreboard players set #temp ir.temp 0
 scoreboard players set #game ir.state 6
+function icerush:ui/lobby
