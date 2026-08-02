@@ -4,4 +4,3 @@
 scoreboard players set #temp ir.temp 0
 scoreboard players operation #temp ir.temp = #round ir.round
 scoreboard players operation #temp ir.temp += #players ir.players
-function icerush:ui/tick
