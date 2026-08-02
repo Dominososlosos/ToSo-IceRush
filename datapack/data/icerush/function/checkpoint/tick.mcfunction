@@ -1,4 +1,5 @@
 # ICE RUSH checkpoint tick
-# Placeholder for checkpoint runtime handling.
+# Handles checkpoint runtime routing during the running phase.
 
 scoreboard players set #temp ir.temp 0
+function icerush:race/tick
