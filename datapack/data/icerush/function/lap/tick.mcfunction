@@ -4,3 +4,4 @@
 scoreboard players set #temp ir.temp 0
 function icerush:checkpoint/tick
 function icerush:finish/start
+function icerush:lap/reset
