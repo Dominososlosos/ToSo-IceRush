@@ -3,3 +3,4 @@
 
 function icerush:scoreboard/tick
 function icerush:ui/tick
+function icerush:ui/lobby
