@@ -1,5 +1,4 @@
 # ICE RUSH lap tick
-# Handles lap runtime handling and progress routing.
+# Handles lap runtime. Checkpoint/lap progression will be attached here.
 
 scoreboard players set #temp ir.temp 0
-function icerush:checkpoint/tick
