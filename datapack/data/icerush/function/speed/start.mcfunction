@@ -1,5 +1,5 @@
 # ICE RUSH speed start
-# Initializes the speed system for a new race round.
+# Initializes race speed values for a new round.
 
 scoreboard players set #temp ir.temp 0
 scoreboard players set #speed ir.speed 100
