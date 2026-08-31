@@ -1,2 +1,4 @@
 # ICE RUSH state: countdown
-# Locks boats and prepares the round start.
+# Runs the active countdown tick.
+
+function icerush:countdown/tick
