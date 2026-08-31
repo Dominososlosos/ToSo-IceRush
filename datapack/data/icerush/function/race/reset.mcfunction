@@ -1,7 +1,7 @@
 # ICE RUSH race reset
-# Resets the active race round back to lobby-ready defaults.
+# Resets round-specific runtime state.
 
 scoreboard players set #round ir.round 0
-scoreboard players set #temp ir.temp 0
+scoreboard players set #timer ir.timer 0
 scoreboard players set #event ir.event 0
-function icerush:ui/lobby
+scoreboard players set #temp ir.temp 0
