@@ -1,6 +1,5 @@
 # ICE RUSH winner tick
-# Handles winner state runtime and prepares end-of-round flow.
+# Holds winner state without recursively re-entering other state ticks.
 
 scoreboard players set #temp ir.temp 0
 scoreboard players set #game ir.state 6
-function icerush:ui/lobby
