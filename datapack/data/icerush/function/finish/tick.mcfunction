@@ -1,7 +1,6 @@
 # ICE RUSH finish tick
-# Handles end-of-round and winner cleanup.
+# Handles end-of-round cleanup.
 
 scoreboard players set #temp ir.temp 0
 scoreboard players set #game ir.state 6
-function icerush:ui/lobby
 function icerush:race/reset
