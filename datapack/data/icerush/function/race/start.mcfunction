@@ -3,4 +3,5 @@
 
 scoreboard players add #round ir.round 1
 function icerush:speed/start
-function icerush:checkpoint/start
+function icerush:lap/start
+function icerush:events/random
