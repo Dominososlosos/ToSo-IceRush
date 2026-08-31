@@ -1,6 +1,6 @@
 # ICE RUSH countdown finish
-# Ends the countdown and switches into the running state.
+# Ends countdown and begins the race.
 
 scoreboard players set #game ir.state 3
 scoreboard players set #timer ir.timer 0
-function icerush:ui/lobby
+function icerush:race/start
