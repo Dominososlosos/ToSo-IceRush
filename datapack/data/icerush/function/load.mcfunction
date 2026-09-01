@@ -30,6 +30,9 @@ scoreboard objectives add ir.event dummy
 scoreboard objectives add ir.crack dummy
 scoreboard objectives add ir.vote dummy
 scoreboard objectives add ir.temp dummy
+scoreboard objectives add ir.cp dummy
+scoreboard objectives add ir.lap dummy
+scoreboard objectives add ir.finished dummy
 
 scoreboard players set #game ir.state 0
 scoreboard players set #round ir.round 0
