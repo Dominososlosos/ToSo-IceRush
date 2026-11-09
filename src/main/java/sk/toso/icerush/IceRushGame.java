@@ -37,6 +37,7 @@ public final class IceRushGame {
     private final Map<UUID, Participant> participants = new LinkedHashMap<>();
     private final List<Vec3d> parkingSpots = new ArrayList<>();
     private final Set<Integer> occupiedSpots = new HashSet<>();
+    private final Set<UUID> lateSpectators = new HashSet<>();
     private State state = State.WAITING;
     private int timer;
     private int round;
@@ -47,6 +48,7 @@ public final class IceRushGame {
         private boolean ready;
         private boolean eliminated;
         private boolean parked;
+        private int parkingSpot = -1;
 
         private Participant(UUID id) {
             this.id = id;
@@ -76,6 +78,7 @@ public final class IceRushGame {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         if (state != State.WAITING) {
             player.changeGameMode(GameMode.SPECTATOR);
+            lateSpectators.add(player.getUuid());
             player.sendMessage(Text.literal("Hra už prebieha. Pripojíš sa až do ďalšej hry.").formatted(Formatting.YELLOW), false);
             return 1;
         }
@@ -174,6 +177,24 @@ public final class IceRushGame {
         return 1;
     }
 
+    public void onPlayerJoin(ServerPlayerEntity player) {
+        if (state != State.WAITING && !participants.containsKey(player.getUuid())) {
+            lateSpectators.add(player.getUuid());
+            player.changeGameMode(GameMode.SPECTATOR);
+            player.sendMessage(Text.literal("ICE RUSH už prebieha. Zatiaľ si divák; do lobby sa pripojíš po skončení hry.").formatted(Formatting.YELLOW), false);
+        }
+    }
+
+    public void onPlayerDisconnect(UUID playerId) {
+        if (state == State.WAITING) {
+            participants.remove(playerId);
+        } else {
+            Participant participant = participants.get(playerId);
+            if (participant != null) participant.eliminated = true;
+            lateSpectators.remove(playerId);
+        }
+    }
+
     private void tryStartCountdown(MinecraftServer server) {
         if (state != State.WAITING || participants.size() < MIN_PLAYERS) return;
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
@@ -219,6 +240,7 @@ public final class IceRushGame {
         round++;
         for (Participant p : participants.values()) {
             p.parked = false;
+            p.parkingSpot = -1;
             p.ready = false;
         }
         occupiedSpots.clear();
@@ -231,14 +253,18 @@ public final class IceRushGame {
         state = State.PARKING;
         timer = PARKING_TICKS;
         occupiedSpots.clear();
-        for (Participant p : participants.values()) p.parked = false;
+        for (Participant p : participants.values()) { p.parked = false; p.parkingSpot = -1; }
         broadcast(server, Text.literal("PARKOVANIE! Máš 20 sekúnd na obsadenie miesta.").formatted(Formatting.GOLD, Formatting.BOLD));
     }
 
     private void updateParking(MinecraftServer server) {
         occupiedSpots.clear();
         for (Participant participant : participants.values()) {
-            if (participant.eliminated || participant.parked) continue;
+            if (participant.eliminated) continue;
+            if (participant.parked) {
+                if (participant.parkingSpot >= 0) occupiedSpots.add(participant.parkingSpot);
+                continue;
+            }
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player == null) continue;
             Entity vehicle = player.getVehicle();
@@ -248,6 +274,7 @@ public final class IceRushGame {
                 if (occupiedSpots.contains(i)) continue;
                 if (boatPosition.squaredDistanceTo(parkingSpots.get(i)) <= PARKING_RADIUS_SQUARED) {
                     participant.parked = true;
+                    participant.parkingSpot = i;
                     occupiedSpots.add(i);
                     player.sendMessage(Text.literal("Parkovacie miesto obsadené!").formatted(Formatting.GREEN), true);
                     break;
@@ -275,7 +302,7 @@ public final class IceRushGame {
         if (remaining <= 1) {
             declareWinner(server);
         } else {
-            for (Participant p : participants.values()) p.parked = false;
+            for (Participant p : participants.values()) { p.parked = false; p.parkingSpot = -1; }
             state = State.RACING;
             timer = ThreadLocalRandom.current().nextInt(MIN_RIDE_TICKS, MAX_RIDE_TICKS + 1);
             broadcast(server, Text.literal("Kolo " + (round + 1) + " začína! Zostáva hráčov: " + remaining).formatted(Formatting.AQUA, Formatting.BOLD));
@@ -302,6 +329,11 @@ public final class IceRushGame {
             if (player != null) player.changeGameMode(GameMode.ADVENTURE);
         }
         participants.clear();
+        for (UUID id : lateSpectators) {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
+            if (player != null) player.changeGameMode(GameMode.ADVENTURE);
+        }
+        lateSpectators.clear();
         occupiedSpots.clear();
         state = State.WAITING;
         timer = 0;
