@@ -49,6 +49,7 @@ public final class IceRushGame {
         private boolean eliminated;
         private boolean parked;
         private int parkingSpot = -1;
+        private int points;
 
         private Participant(UUID id) {
             this.id = id;
@@ -96,6 +97,10 @@ public final class IceRushGame {
     }
 
     private int leave(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        if (state != State.WAITING) {
+            source.sendError(Text.literal("Počas hry už nemôžeš opustiť zostavu. Ak odídeš zo servera, budeš vyradený."));
+            return 0;
+        }
         ServerPlayerEntity player = source.getPlayerOrThrow();
         Participant removed = participants.remove(player.getUuid());
         if (removed == null) {
@@ -288,12 +293,16 @@ public final class IceRushGame {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (participant.parked) {
-                if (player != null) player.sendMessage(Text.literal("+10 bodov za parkovanie, +5 za prežitie kola.").formatted(Formatting.GREEN), false);
+                participant.points += 15;
+                if (player != null) player.sendMessage(Text.literal("+15 bodov (parkovanie + prežitie kola). Spolu: " + participant.points).formatted(Formatting.GREEN), false);
             } else {
+                int placeBeforeElimination = activeCount();
+                if (placeBeforeElimination == 2) participant.points += 60;
+                else if (placeBeforeElimination == 3) participant.points += 40;
                 participant.eliminated = true;
                 if (player != null) {
                     player.changeGameMode(GameMode.SPECTATOR);
-                    player.sendMessage(Text.literal("VYPADÁVAŠ! Nenašiel/nenašla si parkovacie miesto.").formatted(Formatting.RED, Formatting.BOLD), false);
+                    player.sendMessage(Text.literal("VYPADÁVAŠ! Nenašiel/nenašla si parkovacie miesto. Body: " + participant.points).formatted(Formatting.RED, Formatting.BOLD), false);
                 }
             }
         }
@@ -317,7 +326,7 @@ public final class IceRushGame {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(winner);
             String name = player == null ? "Víťaz" : player.getName().getString();
             broadcast(server, Text.literal("🏆 " + name + " VYHRÁVA ICE RUSH!").formatted(Formatting.GOLD, Formatting.BOLD));
-            if (player != null) player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší.").formatted(Formatting.GREEN, Formatting.BOLD), false);
+            Participant winnerParticipant = participants.get(winner);\n            if (winnerParticipant != null) winnerParticipant.points += 100;\n            if (player != null) player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší. +100 bodov. Spolu: " + (winnerParticipant == null ? 100 : winnerParticipant.points)).formatted(Formatting.GREEN, Formatting.BOLD), false);
         } else {
             broadcast(server, Text.literal("ICE RUSH sa skončilo bez víťaza.").formatted(Formatting.RED));
         }
