@@ -302,6 +302,9 @@ public final class IceRushGame {
                 }
             }
         }
+        config.arenaInnerRadius = config.trackInnerRadius;
+        config.arenaOuterRadius = config.trackOuterRadius;
+        config.arenaLobbyHeight = config.lobbyHeight;
         initializeArenaPositions();
         buildLobbyControls();
         config.arenaConfigured = true;
@@ -358,7 +361,7 @@ public final class IceRushGame {
         crackPositions.clear();
         double trackRadius = (arenaInnerRadius() + arenaOuterRadius()) / 2.0;
         for (int i = 0; i < 8; i++) {
-            double angle = (Math.PI * 2.0 * i) / 8.0;
+            double angle = (Math.PI * 2.0 * i) / 8.0 + Math.PI / 16.0;
             crackPositions.add(new BlockPos((int) Math.round(cx + Math.cos(angle) * trackRadius), cy, (int) Math.round(cz + Math.sin(angle) * trackRadius)));
         }
         for (int i = 0; i < config.maxPlayers; i++) {
@@ -566,7 +569,7 @@ public final class IceRushGame {
             : "ICE RUSH už prebieha. Sleduješ zápas a do ďalšieho kola sa môžeš zapojiť.").formatted(Formatting.YELLOW), false);
     }
 
-    public void onPlayerDisconnect(UUID playerId) {
+    public void onPlayerDisconnect(UUID playerId, MinecraftServer server) {
         BoatEntity disconnectedBoat = playerBoats.remove(playerId);
         if (disconnectedBoat != null && !disconnectedBoat.isRemoved()) disconnectedBoat.discard();
         ServerBossBar disconnectedBar = speedBars.remove(playerId);
@@ -576,7 +579,14 @@ public final class IceRushGame {
             if (state == State.COUNTDOWN) countdownNeedsValidation = true;
         } else {
             Participant participant = participants.get(playerId);
-            if (participant != null) participant.eliminated = true;
+            if (participant != null && !participant.eliminated) {
+                int placeBeforeDisconnect = activeCount();
+                if (placeBeforeDisconnect == 2) participant.points += 60;
+                else if (placeBeforeDisconnect == 3) participant.points += 40;
+                participant.eliminated = true;
+                String name = participant.playerName.isBlank() ? playerId.toString().substring(0, 8) : participant.playerName;
+                broadcast(server, Text.literal(name + " opustil zápas a vypadáva.").formatted(Formatting.RED));
+            }
             lateSpectators.remove(playerId);
         }
     }
@@ -979,7 +989,6 @@ public final class IceRushGame {
             participant.speedPercent = Math.max(config.minimumSpeedPercent,
                 Math.min(100, config.minimumSpeedPercent + speedTier * 5));
             ServerBossBar bar = speedBars.get(participant.id);
-            if (bar == null) continue;
             if (participant.speedPercent >= 80) {
                 bar.setColor(BossBar.Color.GREEN);
                 bar.setName(Text.literal("RÝCHLOSŤ — " + participant.speedPercent + "%"));
@@ -995,6 +1004,7 @@ public final class IceRushGame {
             double targetScale = participant.speedPercent / 100.0;
             boat.setVelocity(new Vec3d(unscaledVelocity.x * targetScale, currentVelocity.y, unscaledVelocity.z * targetScale));
             participant.appliedSpeedScale = targetScale;
+            if (bar == null) continue;
             bar.setPercent(participant.speedPercent / 100.0F);
         }
     }
@@ -1160,9 +1170,9 @@ public final class IceRushGame {
     }
 
     private void admitLateSpectators(MinecraftServer server) {
-        if (lateSpectators.isEmpty() || participants.size() >= config.maxPlayers) return;
+        if (lateSpectators.isEmpty() || activeCount() >= config.maxPlayers) return;
         for (UUID id : new ArrayList<>(lateSpectators)) {
-            if (participants.size() >= config.maxPlayers) break;
+            if (activeCount() >= config.maxPlayers) break;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
             if (player == null) continue;
             Participant participant = new Participant(id);
