@@ -57,6 +57,7 @@ public final class IceRushGame {
     private BlockPos arenaCenter;
     private Vec3d lobbyPosition;
     private boolean countdownNeedsValidation;
+    private boolean boatsLocked;
     private State state = State.WAITING;
     private int timer;
     private int round;
@@ -344,6 +345,8 @@ public final class IceRushGame {
     }
 
     private void beginCountdown(MinecraftServer server) {
+        spawnRoundBoats(server);
+        boatsLocked = true;
         state = State.COUNTDOWN;
         timer = config.countdownSeconds * 20;
         broadcast(server, Text.literal("ICE RUSH sa začína!").formatted(Formatting.GOLD, Formatting.BOLD));
@@ -363,8 +366,8 @@ public final class IceRushGame {
                 recheckCountdown(server);
                 if (state != State.COUNTDOWN) return;
             }
-            timer--;
-            if (timer == 40 || timer == 20 || timer == 0) {
+            enforceBoatSeats(server);
+            if (boatsLocked) {\n                for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.setVelocity(Vec3d.ZERO);\n            }\n            timer--;\n            if (timer == config.countdownSeconds * 20 - 20 || timer == config.countdownSeconds * 20 - 40 || timer == 0) {
                 String label = timer == 40 ? "3" : timer == 20 ? "2" : "1";
                 broadcast(server, Text.literal(label).formatted(Formatting.YELLOW, Formatting.BOLD));
             }
@@ -402,6 +405,7 @@ public final class IceRushGame {
 
     private void startRound(MinecraftServer server) {
         if (round == 0) resultsCommitted = false;
+        boatsLocked = false;
         round++;
         for (Participant p : participants.values()) {
             p.parked = false;
@@ -811,6 +815,7 @@ public final class IceRushGame {
         state = State.WAITING;
         timer = 0;
         countdownNeedsValidation = false;
+        boatsLocked = false;
         round = 0;
         resultsCommitted = false;
         winner = null;
