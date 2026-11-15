@@ -96,6 +96,7 @@ final class IceRushConfig {
         crackWarningSeconds = clamp(crackWarningSeconds, 1, 10);
         speedGraceSeconds = clamp(speedGraceSeconds, 0, 30);
         minimumSpeedPercent = clamp(minimumSpeedPercent, 60, 100);
+        minimumSpeedPercent = 60 + Math.round((minimumSpeedPercent - 60) / 5.0F) * 5;
         speedReference = Math.max(0.05, Math.min(speedReference, 2.0));
         parkingRadius = Math.max(1.0, Math.min(parkingRadius, 10.0));
         save();
