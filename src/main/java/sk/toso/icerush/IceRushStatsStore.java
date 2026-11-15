@@ -25,6 +25,7 @@ final class IceRushStatsStore {
         int turboBonuses;
         double speedRecord;
         int bestParkingTicks;
+        int roundsSurvived;
         String playerName = "";
         java.util.List<String> achievements = new java.util.ArrayList<>();
     }
