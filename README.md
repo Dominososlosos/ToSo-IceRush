@@ -17,6 +17,18 @@ gradle build
 
 The mod JAR is created in `build/libs/`.
 
+## Installation
+
+1. Use a Minecraft Java 1.21.1 server with Fabric Loader 0.19.1 and Java 21.
+2. Install Fabric API 0.116.18+1.21.1 in the server `mods` folder.
+3. Copy the ICE RUSH JAR from `build/libs/` into the same `mods` folder.
+4. Start the server and run `/icerush setup` as an administrator at the intended arena center.
+5. If the lobby controls or results board are missing on an existing arena, run `/icerush lobbysetup`.
+
+## CI verification
+
+GitHub Actions builds the mod and runs a dedicated Fabric server smoke test. The smoke test verifies that the mod loads, the `/icerush status` command is registered, and the server configuration is created. It does not replace a real multiplayer gameplay test.
+
 ## Commands
 - `/icerush join` — join the lobby
 - `/icerush ready` — cast your one-time READY vote
