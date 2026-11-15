@@ -72,6 +72,7 @@ public final class IceRushGame {
 
     private static final class Participant {
         private final UUID id;
+        private String playerName = "";
         private boolean ready;
         private boolean eliminated;
         private boolean parked;
@@ -136,7 +137,9 @@ public final class IceRushGame {
             player.sendMessage(Text.literal("ICE RUSH je plný (" + config.maxPlayers + " hráčov).").formatted(Formatting.RED), false);
             return 0;
         }
-        participants.put(player.getUuid(), new Participant(player.getUuid()));
+        Participant participant = new Participant(player.getUuid());
+        participant.playerName = player.getName().getString();
+        participants.put(player.getUuid(), participant);
         teleportToLobby(player);
         player.changeGameMode(GameMode.ADVENTURE);
         broadcast(source.getServer(), Text.literal(player.getName().getString() + " sa pripojil do ICE RUSH (" + participants.size() + "/" + config.maxPlayers + ").").formatted(Formatting.AQUA));
@@ -925,7 +928,9 @@ public final class IceRushGame {
             if (participants.size() >= config.maxPlayers) break;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
             if (player == null) continue;
-            participants.put(id, new Participant(id));
+            Participant participant = new Participant(id);
+            participant.playerName = player.getName().getString();
+            participants.put(id, participant);
             lateSpectators.remove(id);
             player.changeGameMode(GameMode.SURVIVAL);
             player.sendMessage(Text.literal("Pripojil si sa do ďalšieho kola ICE RUSH!").formatted(Formatting.GREEN), false);
@@ -1006,6 +1011,7 @@ public final class IceRushGame {
             stats.gamesPlayed++;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player != null) stats.playerName = player.getName().getString();
+            else if (!participant.playerName.isBlank()) stats.playerName = participant.playerName;
             stats.points += participant.points;
             stats.turboBonuses += participant.turboBonuses;
             stats.speedRecord = Math.max(stats.speedRecord, participant.speedRecord);
