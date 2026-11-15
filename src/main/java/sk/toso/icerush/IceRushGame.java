@@ -115,6 +115,7 @@ public final class IceRushGame {
             player.changeGameMode(GameMode.SPECTATOR);
             lateSpectators.add(player.getUuid());
             phaseBar.addPlayer(player);
+            teleportToLobby(player);
             player.sendMessage(Text.literal("Hra už prebieha. Pripojíš sa až do ďalšej hry.").formatted(Formatting.YELLOW), false);
             return 1;
         }
@@ -319,6 +320,7 @@ public final class IceRushGame {
             lateSpectators.add(player.getUuid());
             phaseBar.addPlayer(player);
             player.changeGameMode(GameMode.SPECTATOR);
+            teleportToLobby(player);
             player.sendMessage(Text.literal("ICE RUSH už prebieha. Zatiaľ si divák; do lobby sa pripojíš po skončení hry.").formatted(Formatting.YELLOW), false);
         }
     }
