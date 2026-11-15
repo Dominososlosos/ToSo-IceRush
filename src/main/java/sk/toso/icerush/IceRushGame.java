@@ -70,7 +70,8 @@ public final class IceRushGame {
         private boolean parked;
         private int parkingSpot = -1;
         private int points;
-        private int turboTicks;\n        private boolean turboActive;
+        private int turboTicks;
+        private boolean turboActive;
         private int turboBonuses;
         private int parkingTimeTicks;
         private final Set<Integer> turboZonesUsed = new HashSet<>();
@@ -637,20 +638,27 @@ public final class IceRushGame {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
-            Vec3d velocity = boat.getVelocity();
             if (participant.turboTicks > 0) {
-                boat.setVelocity(velocity.multiply(1.0012));
                 participant.turboTicks--;
+                if (participant.turboTicks == 0 && participant.turboActive) {
+                    boat.setVelocity(boat.getVelocity().multiply(1.0 / 1.05));
+                    participant.turboActive = false;
+                }
             }
+            Vec3d velocity = boat.getVelocity();
             for (int i = 0; i < turboZones.size(); i++) {
                 if (boat.getPos().squaredDistanceTo(turboZones.get(i)) > 9.0) {
                     participant.turboZonesUsed.remove(i);
                     continue;
                 }
                 if (participant.turboZonesUsed.contains(i)) continue;
-                if (velocity.horizontalLength() < 0.18) continue; // bonus iba pri zelenej (rýchlej) jazde
+                if (velocity.horizontalLength() < 0.18) continue;
                 participant.turboZonesUsed.add(i);
-                if (!participant.turboActive) {\n                    boat.setVelocity(boat.getVelocity().multiply(1.05));\n                    participant.turboActive = true;\n                }\n                participant.turboTicks = config.turboDurationSeconds * 20; // ďalší zásah obnoví čas, bonus sa nesčítava
+                if (!participant.turboActive) {
+                    boat.setVelocity(boat.getVelocity().multiply(1.05));
+                    participant.turboActive = true;
+                }
+                participant.turboTicks = config.turboDurationSeconds * 20;
                 participant.turboBonuses++;
                 participant.points += config.turboBonusPoints;
                 arenaWorld.spawnParticles(ParticleTypes.FIREWORK, boat.getX(), boat.getY() + 0.5, boat.getZ(), 18, 0.5, 0.3, 0.5, 0.08);
