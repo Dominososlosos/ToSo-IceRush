@@ -120,6 +120,8 @@ public final class IceRushGame {
             return 0;
         }
         participants.put(player.getUuid(), new Participant(player.getUuid()));
+        teleportToLobby(player);
+        player.changeGameMode(GameMode.ADVENTURE);
         broadcast(source.getServer(), Text.literal(player.getName().getString() + " sa pripojil do ICE RUSH (" + participants.size() + "/" + MAX_PLAYERS + ").").formatted(Formatting.AQUA));
         return 1;
     }
@@ -668,6 +670,7 @@ public final class IceRushGame {
         }
         lateSpectators.clear();
         occupiedSpots.clear();
+        clearSpeedBars();
         resetCracks();
         for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.discard();
         playerBoats.clear();
