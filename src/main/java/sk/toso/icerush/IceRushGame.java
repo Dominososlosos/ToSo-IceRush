@@ -483,6 +483,7 @@ public final class IceRushGame {
     }
 
     private void startRound(MinecraftServer server) {
+        if (!lobbyCountdown) admitLateSpectators(server);
         if (round == 0) resultsCommitted = false;
         boatsLocked = false;
         lobbyCountdown = false;
