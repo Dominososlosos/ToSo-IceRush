@@ -21,10 +21,10 @@ The Fabric mod creates `config/icerush.json` on the first server start. Edit the
 | `crackChancePercent` | 10 | Chance per fixed crack position |
 | `crackWarningSeconds` | 2 | Warning before a crack opens |
 | `speedGraceSeconds` | 5 | Time before speed evaluation starts |
-| `minimumSpeedPercent` | 60 | Configured lower speed bound |
-| `speedReference` | 0.30 | Reference horizontal boat velocity |
+| `minimumSpeedPercent` | 60 | Lowest displayed speed tier (percent) |
+| `speedReference` | 0.30 | Horizontal boat velocity mapped to the 100% tier |
 | `parkingRadius` | 2.5 | Radius used to detect a parked boat |
 
-Values are clamped to safe ranges when the config is loaded. Some settings are already used by the game loop; the minimum-speed percentage and speed reference are reserved for the remaining speed-penalty implementation and do not yet change boat physics.
+Values are clamped to safe ranges when the config is loaded. The minimum-speed percentage and speed reference determine the nine displayed BossBar tiers from 60% to 100%. The physical boat-speed scaling for those tiers is still pending.
 
 Completed-game statistics are saved separately in `config/icerush-stats.json`. An administrator reset does not count as a completed game and does not save that round's results.
