@@ -821,11 +821,15 @@ public final class IceRushGame {
     private void tickParkingVisuals(MinecraftServer server) {
         if (arenaWorld == null) return;
         // Miesta sa postupne vyskladajú namiesto okamžitého objavenia celej plochy.
+        BlockPos lastPlaced = null;
         for (int placed = 0; placed < 8 && parkingAnimationIndex < parkingAnimationBlocks.size(); placed++) {
             BlockPos pos = parkingAnimationBlocks.get(parkingAnimationIndex++);
             arenaWorld.setBlockState(pos, Blocks.LIGHT_BLUE_CONCRETE.getDefaultState());
             arenaWorld.spawnParticles(ParticleTypes.SNOWFLAKE, pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5, 5, 0.25, 0.1, 0.25, 0.01);
-            arenaWorld.playSound(null, pos, SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.BLOCKS, 0.25F, 1.6F);
+            lastPlaced = pos;
+        }
+        if (lastPlaced != null && server.getTicks() % 5 == 0) {
+            arenaWorld.playSound(null, lastPlaced, SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.BLOCKS, 0.35F, 1.6F);
         }
         if (server.getTicks() % 10 != 0) return;
         for (BlockPos pos : parkingOriginalStates.keySet()) {
