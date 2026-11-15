@@ -870,19 +870,25 @@ public final class IceRushGame {
         }
     }
 
+    private void tickTurboExpiry(MinecraftServer server) {
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated || participant.turboTicks <= 0) continue;
+            BoatEntity boat = playerBoats.get(participant.id);
+            participant.turboTicks--;
+            if (participant.turboTicks == 0 && participant.turboActive) {
+                if (boat != null && !boat.isRemoved()) boat.setVelocity(boat.getVelocity().multiply(1.0 / 1.05));
+                participant.turboActive = false;
+            }
+        }
+    }
+
     private void tickTurbo(MinecraftServer server) {
+        tickTurboExpiry(server);
+        if (roundTicks < config.speedGraceSeconds * 20 || server.getTicks() % 5 != 0) return;
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
-            if (participant.turboTicks > 0) {
-                participant.turboTicks--;
-                if (participant.turboTicks == 0 && participant.turboActive) {
-                    boat.setVelocity(boat.getVelocity().multiply(1.0 / 1.05));
-                    participant.turboActive = false;
-                }
-            }
-            if (roundTicks < config.speedGraceSeconds * 20 || server.getTicks() % 5 != 0) continue;
             Vec3d velocity = boat.getVelocity();
             for (int i = 0; i < turboZones.size(); i++) {
                 if (boat.getPos().squaredDistanceTo(turboZones.get(i)) > 9.0) {
