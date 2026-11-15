@@ -213,6 +213,10 @@ public final class IceRushGame {
     }
 
     private int setupArena(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        if (arenaWorld != null) {
+            source.sendError(Text.literal("Aréna už bola v tomto behu servera vytvorená."));
+            return 0;
+        }
         if (state != State.WAITING) {
             source.sendError(Text.literal("Arénu možno vytvoriť iba v lobby."));
             return 0;
@@ -248,7 +252,12 @@ public final class IceRushGame {
             startPositions.add(position);
             parkingSpots.add(position);
         }
+        for (Participant participant : participants.values()) {
+            ServerPlayerEntity player = source.getServer().getPlayerManager().getPlayer(participant.id);
+            if (player != null) teleportToLobby(player);
+        }
         admin.sendMessage(Text.literal("ICE RUSH aréna vytvorená. Dráha: priemer 90, šírka 7; lobby je 80 blokov nad ňou.").formatted(Formatting.GREEN), false);
+        tryStartCountdown(source.getServer());
         return 1;
     }
 
