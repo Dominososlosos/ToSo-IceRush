@@ -912,13 +912,19 @@ public final class IceRushGame {
     }
 
     private void enforceBoatSeats(MinecraftServer server) {
+        if (arenaWorld == null) return;
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player == null) continue;
             BoatEntity boat = playerBoats.get(participant.id);
-            if (player != null && boat != null && !boat.isRemoved() && player.getVehicle() != boat) {
-                player.startRiding(boat, true);
+            if (boat == null || boat.isRemoved()) {
+                boat = new BoatEntity(EntityType.BOAT, arenaWorld);
+                boat.setPosition(player.getX(), player.getY() - 0.5, player.getZ());
+                arenaWorld.spawnEntity(boat);
+                playerBoats.put(participant.id, boat);
             }
+            if (player.getVehicle() != boat) player.startRiding(boat, true);
         }
     }
 
