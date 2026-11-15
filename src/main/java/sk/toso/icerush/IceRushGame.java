@@ -776,6 +776,10 @@ public final class IceRushGame {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player != null && !participant.eliminated) player.sendMessage(hud, true);
         }
+        for (UUID id : lateSpectators) {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
+            if (player != null) player.sendMessage(hud, true);
+        }
     }
 
     private void setupSpeedBars(MinecraftServer server) {
@@ -1069,6 +1073,10 @@ public final class IceRushGame {
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player != null) sendTitle(player, title, subtitle, stayTicks);
+        }
+        for (UUID id : lateSpectators) {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
             if (player != null) sendTitle(player, title, subtitle, stayTicks);
         }
     }
