@@ -25,6 +25,7 @@ The mod JAR is created in `build/libs/`.
 - `/icerush stats` — show your persistent statistics
 - `/icerush top` — show the TOP 10 leaderboard
 - `/icerush achievements` — show unlocked achievements
+- `/icerush lastwinner` — show the last completed game's winner
 - `/icerush start` — admin start (requires 80% ready)
 - `/icerush addspot` — admin: save a parking location at your current position
 - `/icerush clearspots` — admin: remove configured parking locations
@@ -32,7 +33,7 @@ The mod JAR is created in `build/libs/`.
 - `/icerush reset` — admin reset
 
 ## Current implementation milestone
-The Fabric server mod currently includes the lobby commands, one-time READY votes, the 80% threshold, countdown cancellation when the roster changes, a generated circular arena and elevated lobby, boat spawning and seat enforcement, per-player speed BossBars with a five-second grace period, six turbo zones, 5% random round events, eight crack positions with warnings, a 25–40 second ride phase, dynamic parking count, 20-second parking, elimination, and survival rounds. Arena setup generates parking positions automatically; `/icerush addspot` can add manual positions. Gameplay settings are generated in `config/icerush.json`; completed-game statistics are stored in `config/icerush-stats.json` and survive server restarts.
+The Fabric server mod currently includes the lobby commands, one-time READY votes, the 80% threshold, countdown cancellation when the roster changes, a generated circular arena and elevated lobby, boat spawning and seat enforcement, per-player speed BossBars with a five-second grace period, six turbo zones, 5% random round events, eight crack positions with warnings, a 25–40 second ride phase, dynamic parking count, 20-second parking, elimination, and survival rounds. Arena setup generates parking positions automatically; `/icerush addspot` can add manual positions. Gameplay settings are generated in `config/icerush.json`; completed-game statistics are stored in `config/icerush-stats.json`, and the last winner is stored in `config/icerush-last-winner.txt`; both survive server restarts.
 
 ## Setup
 1. Run `/icerush setup` while standing at the intended arena center. This builds the Blue Ice ring and a raised lobby platform.
