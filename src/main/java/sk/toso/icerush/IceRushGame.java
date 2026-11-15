@@ -889,14 +889,14 @@ public final class IceRushGame {
     private void updateSidebar(MinecraftServer server) {
         if (!sidebarInitialized) {
             server.getCommandManager().executeWithPrefix(server.getCommandSource(),
-                "scoreboard objectives add icerush dummy {\\\"text\\\":\\\"ICE RUSH\\\",\\\"color\\\":\\\"aqua\\\",\\\"bold\\\":true}");
+                "scoreboard objectives add icerush dummy {\"text\":\"ICE RUSH\",\"color\":\"aqua\",\"bold\":true}");
             server.getCommandManager().executeWithPrefix(server.getCommandSource(), "scoreboard objectives setdisplay sidebar icerush");
             server.getCommandManager().executeWithPrefix(server.getCommandSource(), "scoreboard players reset * icerush");
             sidebarInitialized = true;
         }
         for (String previous : sidebarEntries) {
             server.getCommandManager().executeWithPrefix(server.getCommandSource(),
-                "scoreboard players reset \\\"" + previous.replace("\\\"", "") + "\\\" icerush");
+                "scoreboard players reset \"" + previous.replace("\"", "") + "\" icerush");
         }
         sidebarEntries.clear();
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
@@ -912,9 +912,9 @@ public final class IceRushGame {
                 "READY: " + readyCount + "/" + participants.size(), "Stav: " + phase}
             : new String[]{"Hráči: " + activeCount(), "Kolo: " + round, "Stav: " + phase};
         for (int i = 0; i < lines.length; i++) {
-            String line = lines[i].replace(\"\\\"\", \"\");
+            String line = lines[i].replace("\"", "");
             server.getCommandManager().executeWithPrefix(server.getCommandSource(),
-                "scoreboard players set \\\"" + line + "\\\" icerush " + (lines.length - i));
+                "scoreboard players set \"" + line + "\" icerush " + (lines.length - i));
             sidebarEntries.add(line);
         }
     }
