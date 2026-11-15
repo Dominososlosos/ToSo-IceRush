@@ -252,7 +252,37 @@ public final class IceRushGame {
         return 1;
     }
 
-    private int showStats(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {\n        ServerPlayerEntity player = source.getPlayerOrThrow();\n        IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());\n        Text message = Text.literal("ICE RUSH ŠTATISTIKY\n")\n            .append("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "\n")\n            .append("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "\n")\n            .append("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "\n")\n            .append("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s"));\n        player.sendMessage(message, false);\n        return 1;\n    }\n\n    private int showTop(ServerCommandSource source) {\n        Text message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV\n");\n        int rank = 1;\n        for (Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry : statsStore.top(10)) {\n            ServerPlayerEntity online = source.getServer().getPlayerManager().getPlayer(entry.getKey());\n            String name = online == null ? entry.getKey().toString().substring(0, 8) : online.getName().getString();\n            message.append(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")\n");\n        }\n        source.sendFeedback(() -> message, false);\n        return 1;\n    }\n\n    private int status(ServerCommandSource source) {
+    private int showStats(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayerEntity player = source.getPlayerOrThrow();
+        IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
+        Text message = Text.literal("ICE RUSH ŠTATISTIKY
+")
+            .append("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "
+")
+            .append("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "
+")
+            .append("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "
+")
+            .append("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s"));
+        player.sendMessage(message, false);
+        return 1;
+    }
+
+    private int showTop(ServerCommandSource source) {
+        Text message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV
+");
+        int rank = 1;
+        for (Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry : statsStore.top(10)) {
+            ServerPlayerEntity online = source.getServer().getPlayerManager().getPlayer(entry.getKey());
+            String name = online == null ? entry.getKey().toString().substring(0, 8) : online.getName().getString();
+            message.append(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")
+");
+        }
+        source.sendFeedback(() -> message, false);
+        return 1;
+    }
+
+    private int status(ServerCommandSource source) {
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
         source.sendFeedback(() -> Text.literal("ICE RUSH | Stav: " + state + " | Kolo: " + round
             + " | Hráči: " + activeCount() + "/" + participants.size()
