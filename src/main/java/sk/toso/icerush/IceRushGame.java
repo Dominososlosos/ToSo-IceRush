@@ -438,6 +438,7 @@ public final class IceRushGame {
             if (server.getTicks() % 20 == 0) updateHud(server);
             enforceBoatSeats(server);
             tickCracks(server);
+            tickParkingVisuals(server);
             updateParking(server);
             timer--;
             int requiredSpots = Math.max(0, activeCount() - 1);
@@ -548,6 +549,7 @@ public final class IceRushGame {
     }
 
     private void finishParking(MinecraftServer server) {
+        hideParkingPads();
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
@@ -571,6 +573,10 @@ public final class IceRushGame {
                     ServerBossBar speedBar = speedBars.remove(participant.id);
                     if (speedBar != null) speedBar.clearPlayers();
                     phaseBar.removePlayer(player);
+                    if (arenaWorld != null) {
+                        arenaWorld.spawnParticles(ParticleTypes.CLOUD, player.getX(), player.getY() + 0.5, player.getZ(), 24, 0.5, 0.4, 0.5, 0.03);
+                        arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0F, 0.7F);
+                    }
                     player.changeGameMode(GameMode.SPECTATOR);
                     player.sendMessage(Text.literal("VYPADÁVAŠ! Nenašiel/nenašla si parkovacie miesto. Body: " + participant.points).formatted(Formatting.RED, Formatting.BOLD), false);
                 }
@@ -846,6 +852,7 @@ public final class IceRushGame {
                     arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 1.5F, 0.8F);
                 }
                 player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší. +100 bodov. Spolu: " + (winnerParticipant == null ? 100 : winnerParticipant.points)).formatted(Formatting.GREEN, Formatting.BOLD), false);
+            }
         } else {
             broadcast(server, Text.literal("ICE RUSH sa skončilo bez víťaza.").formatted(Formatting.RED));
         }
@@ -892,6 +899,7 @@ public final class IceRushGame {
         occupiedSpots.clear();
         clearSpeedBars();
         phaseBar.clearPlayers();
+        hideParkingPads();
         resetCracks();
         for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.discard();
         playerBoats.clear();
