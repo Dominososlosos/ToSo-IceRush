@@ -725,6 +725,8 @@ public final class IceRushGame {
                 if (placeBeforeElimination == 2) participant.points += 60;
                 else if (placeBeforeElimination == 3) participant.points += 40;
                 participant.eliminated = true;
+                String eliminatedName = player == null ? participant.playerName : player.getName().getString();
+                broadcast(server, Text.literal(eliminatedName + " vypadáva z kola!").formatted(Formatting.RED));
                 if (player != null) {
                     player.stopRiding();
                     BoatEntity eliminatedBoat = playerBoats.remove(participant.id);
@@ -907,6 +909,7 @@ public final class IceRushGame {
                 if (placeBeforeElimination == 2) participant.points += 60;
                 else if (placeBeforeElimination == 3) participant.points += 40;
                 participant.eliminated = true;
+                broadcast(server, Text.literal(player.getName().getString() + " vypadáva cez prasknutý ľad!").formatted(Formatting.RED));
                 player.stopRiding();
                 BoatEntity eliminatedBoat = playerBoats.remove(participant.id);
                 if (eliminatedBoat != null && !eliminatedBoat.isRemoved()) eliminatedBoat.discard();
