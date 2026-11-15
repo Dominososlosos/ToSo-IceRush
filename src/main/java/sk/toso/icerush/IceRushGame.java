@@ -114,6 +114,7 @@ public final class IceRushGame {
         if (state != State.WAITING) {
             player.changeGameMode(GameMode.SPECTATOR);
             lateSpectators.add(player.getUuid());
+            phaseBar.addPlayer(player);
             player.sendMessage(Text.literal("Hra už prebieha. Pripojíš sa až do ďalšej hry.").formatted(Formatting.YELLOW), false);
             return 1;
         }
@@ -300,6 +301,7 @@ public final class IceRushGame {
     public void onPlayerJoin(ServerPlayerEntity player) {
         if (state != State.WAITING && !participants.containsKey(player.getUuid())) {
             lateSpectators.add(player.getUuid());
+            phaseBar.addPlayer(player);
             player.changeGameMode(GameMode.SPECTATOR);
             player.sendMessage(Text.literal("ICE RUSH už prebieha. Zatiaľ si divák; do lobby sa pripojíš po skončení hry.").formatted(Formatting.YELLOW), false);
         }
@@ -364,6 +366,7 @@ public final class IceRushGame {
             return;
         }
         if (state == State.RACING) {
+            if (server.getTicks() % 20 == 0) updateHud(server);
             enforceBoatSeats(server);
             roundTicks++;
             updateSpeedBars(server);
@@ -375,6 +378,8 @@ public final class IceRushGame {
             return;
         }
         if (state == State.PARKING) {
+            phaseBar.setPercent(Math.max(0.0F, Math.min(1.0F, timer / (float) PARKING_TICKS)));
+            if (server.getTicks() % 20 == 0) updateHud(server);
             enforceBoatSeats(server);
             tickCracks(server);
             updateParking(server);
@@ -402,6 +407,10 @@ public final class IceRushGame {
         timer = ThreadLocalRandom.current().nextInt(MIN_RIDE_TICKS, MAX_RIDE_TICKS + 1);
         spawnRoundBoats(server);
         setupSpeedBars(server);
+        phaseBar.setName(Text.literal("JAZDA — KOLO " + round));
+        phaseBar.setColor(BossBar.Color.BLUE);
+        phaseBar.setPercent(1.0F);
+        addPhaseBarPlayers(server);
         roundTicks = 0;
         prepareRoundModifiers(server);
         broadcast(server, Text.literal("ŠTART! Kolo " + round + " — jazda!").formatted(Formatting.GREEN, Formatting.BOLD));
@@ -409,6 +418,9 @@ public final class IceRushGame {
 
     private void beginParking(MinecraftServer server) {
         clearSpeedBars();
+        phaseBar.setName(Text.literal("PARKOVANIE — 20 SEKÚND"));
+        phaseBar.setColor(BossBar.Color.YELLOW);
+        phaseBar.setPercent(1.0F);
         Collections.shuffle(parkingSpots);
         state = State.PARKING;
         timer = PARKING_TICKS;
@@ -481,6 +493,10 @@ public final class IceRushGame {
             timer = ThreadLocalRandom.current().nextInt(MIN_RIDE_TICKS, MAX_RIDE_TICKS + 1);
             spawnRoundBoats(server);
             setupSpeedBars(server);
+            phaseBar.setName(Text.literal("JAZDA — KOLO " + round));
+            phaseBar.setColor(BossBar.Color.BLUE);
+            phaseBar.setPercent(1.0F);
+            addPhaseBarPlayers(server);
             roundTicks = 0;
             prepareRoundModifiers(server);
             broadcast(server, Text.literal("Kolo " + round + " začína! Zostáva hráčov: " + activeCount()).formatted(Formatting.AQUA, Formatting.BOLD));
@@ -713,6 +729,7 @@ public final class IceRushGame {
 
     private void declareWinner(MinecraftServer server) {
         clearSpeedBars();
+        phaseBar.clearPlayers();
         winner = participants.values().stream().filter(p -> !p.eliminated).map(p -> p.id).findFirst().orElse(null);
         state = State.FINISHED;
         timer = FINISH_HOLD_TICKS;
@@ -756,6 +773,7 @@ public final class IceRushGame {
         lateSpectators.clear();
         occupiedSpots.clear();
         clearSpeedBars();
+        phaseBar.clearPlayers();
         resetCracks();
         for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.discard();
         playerBoats.clear();
