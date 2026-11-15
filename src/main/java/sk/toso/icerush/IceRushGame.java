@@ -115,6 +115,8 @@ public final class IceRushGame {
                 .executes(ctx -> addSpot(ctx.getSource())))
             .then(CommandManager.literal("clearspots").requires(s -> s.hasPermissionLevel(2))
                 .executes(ctx -> clearSpots(ctx.getSource())))
+            .then(CommandManager.literal("defaultspots").requires(s -> s.hasPermissionLevel(2))
+                .executes(ctx -> defaultSpots(ctx.getSource())))
             .then(CommandManager.literal("setup").requires(s -> s.hasPermissionLevel(2))
                 .executes(ctx -> setupArena(ctx.getSource())))
         );
@@ -219,7 +221,19 @@ public final class IceRushGame {
             return 0;
         }
         ServerPlayerEntity player = source.getPlayerOrThrow();
-        parkingSpots.add(new Vec3d(player.getX(), player.getY(), player.getZ()));
+        if (arenaWorld == null || player.getServerWorld() != arenaWorld) {
+            source.sendError(Text.literal("Parkovacie miesta pridávaj priamo v nastavenej aréne."));
+            return 0;
+        }
+        if (!config.parkingSpotsCustomized) {
+            config.customParkingSpots.clear();
+            for (Vec3d existing : parkingSpots) config.customParkingSpots.add(new double[]{existing.x, existing.y, existing.z});
+            config.parkingSpotsCustomized = true;
+        }
+        Vec3d newSpot = new Vec3d(player.getX(), player.getY(), player.getZ());
+        parkingSpots.add(newSpot);
+        config.customParkingSpots.add(new double[]{newSpot.x, newSpot.y, newSpot.z});
+        config.save();
         source.sendFeedback(() -> Text.literal("Parkovacie miesto #" + parkingSpots.size() + " uložené na tvojej pozícii."), false);
         return 1;
     }
@@ -326,7 +340,14 @@ public final class IceRushGame {
             double angle = (Math.PI * 2.0 * i) / config.maxPlayers;
             Vec3d position = new Vec3d(cx + Math.cos(angle) * trackRadius + 0.5, cy + 1.0, cz + Math.sin(angle) * trackRadius + 0.5);
             startPositions.add(position);
-            parkingSpots.add(position);
+            if (!config.parkingSpotsCustomized) parkingSpots.add(position);
+        }
+        if (config.parkingSpotsCustomized) {
+            for (double[] coordinates : config.customParkingSpots) {
+                if (coordinates != null && coordinates.length >= 3) {
+                    parkingSpots.add(new Vec3d(coordinates[0], coordinates[1], coordinates[2]));
+                }
+            }
         }
     }
 
@@ -336,7 +357,23 @@ public final class IceRushGame {
             return 0;
         }
         parkingSpots.clear();
-        source.sendFeedback(() -> Text.literal("Všetky parkovacie miesta boli odstránené."), false);
+        config.parkingSpotsCustomized = true;
+        config.customParkingSpots.clear();
+        config.save();
+        source.sendFeedback(() -> Text.literal("Všetky parkovacie miesta boli odstránené. Pridaj vlastné cez /icerush addspot alebo obnov predvolené cez /icerush defaultspots."), false);
+        return 1;
+    }
+
+    private int defaultSpots(ServerCommandSource source) {
+        if (state != State.WAITING || arenaWorld == null) {
+            source.sendError(Text.literal("Predvolené miesta možno obnoviť iba v lobby po vytvorení arény."));
+            return 0;
+        }
+        config.parkingSpotsCustomized = false;
+        config.customParkingSpots.clear();
+        config.save();
+        initializeArenaPositions();
+        source.sendFeedback(() -> Text.literal("Obnovených je " + parkingSpots.size() + " predvolených parkovacích miest."), false);
         return 1;
     }
 
