@@ -767,6 +767,7 @@ public final class IceRushGame {
     private void resetCracks() {
         if (arenaWorld != null) {
             for (BlockPos pos : openCracks) arenaWorld.setBlockState(pos, Blocks.BLUE_ICE.getDefaultState());
+            for (BlockPos pos : warningCracks.keySet()) arenaWorld.setBlockState(pos, Blocks.BLUE_ICE.getDefaultState());
         }
         openCracks.clear();
         warningCracks.clear();
@@ -784,7 +785,10 @@ public final class IceRushGame {
                 arenaWorld.spawnParticles(ParticleTypes.CLOUD, pos.getX() + 0.5, pos.getY() + 0.4, pos.getZ() + 0.5, 18, 0.4, 0.1, 0.4, 0.02);
             } else {
                 warningCracks.put(pos, left);
-                if (left % 10 == 0) arenaWorld.spawnParticles(ParticleTypes.CRIT, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 5, 0.25, 0.1, 0.25, 0.01);
+                if (left % 10 == 0) {
+                    arenaWorld.setBlockState(pos, left % 20 == 0 ? Blocks.LIGHT_BLUE_STAINED_GLASS.getDefaultState() : Blocks.BLUE_ICE.getDefaultState());
+                    arenaWorld.spawnParticles(ParticleTypes.CRIT, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 5, 0.25, 0.1, 0.25, 0.01);
+                }
             }
         }
         if (openCracks.isEmpty()) return;
