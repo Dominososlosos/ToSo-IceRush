@@ -17,6 +17,8 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.ClickEvent;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -142,6 +144,7 @@ public final class IceRushGame {
         participants.put(player.getUuid(), participant);
         teleportToLobby(player);
         player.changeGameMode(GameMode.ADVENTURE);
+        sendLobbyMenu(player);
         broadcast(source.getServer(), Text.literal(player.getName().getString() + " sa pripojil do ICE RUSH (" + participants.size() + "/" + config.maxPlayers + ").").formatted(Formatting.AQUA));
         return 1;
     }
@@ -402,7 +405,10 @@ public final class IceRushGame {
     }
 
     public void onPlayerJoin(ServerPlayerEntity player) {
-        if (state == State.WAITING) return;
+        if (state == State.WAITING) {
+            sendLobbyMenu(player);
+            return;
+        }
         Participant existing = participants.get(player.getUuid());
         if (existing == null) lateSpectators.add(player.getUuid());
         phaseBar.addPlayer(player);
@@ -1067,6 +1073,18 @@ public final class IceRushGame {
         player.stopRiding();
         teleportToLobby(player);
         player.changeGameMode(GameMode.ADVENTURE);
+        sendLobbyMenu(player);
+    }
+
+    private void sendLobbyMenu(ServerPlayerEntity player) {
+        MutableText menu = Text.literal("ICE RUSH  |  ");
+        menu.append(Text.literal("[JOIN]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush join"))));
+        menu.append(Text.literal("  [READY]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush ready"))));
+        menu.append(Text.literal("  [PRAVIDLÁ]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush rules"))));
+        menu.append(Text.literal("  [TOP 10]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush top"))));
+        menu.append(Text.literal("  [ŠTATISTIKY]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush stats"))));
+        menu.append(Text.literal("  [POSLEDNÝ VÍŤAZ]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush lastwinner"))));
+        player.sendMessage(menu, false);
     }
 
     private int activeCount() {
