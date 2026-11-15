@@ -12,7 +12,7 @@ The Fabric mod creates `config/icerush.json` on the first server start. Edit the
 | `parkingSeconds` | 20 | Parking phase duration |
 | `finishHoldSeconds` | 8 | Winner display duration |
 | `lobbyHeight` | 80 | Lobby height above the track |
-| `trackInnerRadius` | 38.5 | Inner radius of the Blue Ice ring |
+| `trackInnerRadius` | 38.0 | Inner radius of the Blue Ice ring |
 | `trackOuterRadius` | 45.0 | Outer radius of the Blue Ice ring |
 | `turboZones` | 6 | Turbo zone count |
 | `turboDurationSeconds` | 2 | Turbo boost duration |
