@@ -256,22 +256,28 @@ public final class IceRushGame {
     private int showStats(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
-        MutableText message = Text.literal("ICE RUSH ŠTATISTIKY\n");
-        message.append(Text.literal("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "\n"));
-        message.append(Text.literal("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "\n"));
-        message.append(Text.literal("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "\n"));
+        MutableText message = Text.literal("ICE RUSH ŠTATISTIKY
+");
+        message.append(Text.literal("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "
+"));
+        message.append(Text.literal("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "
+"));
+        message.append(Text.literal("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "
+"));
         message.append(Text.literal("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s")));
         player.sendMessage(message, false);
         return 1;
     }
 
     private int showTop(ServerCommandSource source) {
-        MutableText message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV\n");
+        MutableText message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV
+");
         int rank = 1;
         for (Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry : statsStore.top(10)) {
             ServerPlayerEntity online = source.getServer().getPlayerManager().getPlayer(entry.getKey());
             String name = online == null ? (entry.getValue().playerName.isBlank() ? entry.getKey().toString().substring(0, 8) : entry.getValue().playerName) : online.getName().getString();
-            message.append(Text.literal(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")\n"));
+            message.append(Text.literal(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")
+"));
         }
         source.sendFeedback(() -> message, false);
         return 1;
@@ -280,9 +286,11 @@ public final class IceRushGame {
     private int showAchievements(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
-        MutableText message = Text.literal("ICE RUSH — ACHIEVEMENTY\n");
+        MutableText message = Text.literal("ICE RUSH — ACHIEVEMENTY
+");
         if (stats.achievements.isEmpty()) message.append(Text.literal("Zatiaľ nemáš odomknuté achievementy."));
-        else for (String achievement : stats.achievements) message.append(Text.literal("• " + achievement + "\n"));
+        else for (String achievement : stats.achievements) message.append(Text.literal("• " + achievement + "
+"));
         player.sendMessage(message, false);
         return 1;
     }
@@ -367,7 +375,13 @@ public final class IceRushGame {
                 if (state != State.COUNTDOWN) return;
             }
             enforceBoatSeats(server);
-            if (boatsLocked) {\n                for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.setVelocity(Vec3d.ZERO);\n            }\n            timer--;\n            if (timer == config.countdownSeconds * 20 - 20 || timer == config.countdownSeconds * 20 - 40 || timer == 0) {
+            if (boatsLocked) {
+                for (BoatEntity boat : playerBoats.values()) {
+                    if (!boat.isRemoved()) boat.setVelocity(Vec3d.ZERO);
+                }
+            }
+            timer--;
+            if (timer == config.countdownSeconds * 20 - 20 || timer == config.countdownSeconds * 20 - 40 || timer == 0) {
                 String label = timer == 40 ? "3" : timer == 20 ? "2" : "1";
                 broadcast(server, Text.literal(label).formatted(Formatting.YELLOW, Formatting.BOLD));
             }
