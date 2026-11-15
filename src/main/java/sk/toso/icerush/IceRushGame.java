@@ -52,6 +52,7 @@ public final class IceRushGame {
     private final Set<UUID> lateSpectators = new HashSet<>();
     private final Map<UUID, BoatEntity> playerBoats = new LinkedHashMap<>();
     private final Map<UUID, ServerBossBar> speedBars = new LinkedHashMap<>();
+    private final ServerBossBar phaseBar = new ServerBossBar(Text.literal("ICE RUSH"), BossBar.Color.BLUE, BossBar.Style.PROGRESS);
     private final List<Vec3d> startPositions = new ArrayList<>();
     private final List<Vec3d> turboZones = new ArrayList<>();
     private final List<BlockPos> crackPositions = new ArrayList<>();
@@ -255,22 +256,28 @@ public final class IceRushGame {
     private int showStats(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
-        Text message = Text.literal("ICE RUSH ŠTATISTIKY\n")
-            .append("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "\n")
-            .append("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "\n")
-            .append("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "\n")
+        Text message = Text.literal("ICE RUSH ŠTATISTIKY
+")
+            .append("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "
+")
+            .append("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "
+")
+            .append("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "
+")
             .append("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s"));
         player.sendMessage(message, false);
         return 1;
     }
 
     private int showTop(ServerCommandSource source) {
-        Text message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV\n");
+        Text message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV
+");
         int rank = 1;
         for (Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry : statsStore.top(10)) {
             ServerPlayerEntity online = source.getServer().getPlayerManager().getPlayer(entry.getKey());
             String name = online == null ? entry.getKey().toString().substring(0, 8) : online.getName().getString();
-            message.append(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")\n");
+            message.append(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")
+");
         }
         source.sendFeedback(() -> message, false);
         return 1;
@@ -477,6 +484,27 @@ public final class IceRushGame {
             roundTicks = 0;
             prepareRoundModifiers(server);
             broadcast(server, Text.literal("Kolo " + round + " začína! Zostáva hráčov: " + activeCount()).formatted(Formatting.AQUA, Formatting.BOLD));
+        }
+    }
+
+    private void addPhaseBarPlayers(MinecraftServer server) {
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player != null) phaseBar.addPlayer(player);
+        }
+        for (UUID id : lateSpectators) {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
+            if (player != null) phaseBar.addPlayer(player);
+        }
+    }
+
+    private void updateHud(MinecraftServer server) {
+        String phase = state == State.PARKING ? "PARKOVANIE" : "JAZDA";
+        Text hud = Text.literal("ICE RUSH  |  Hráči: " + activeCount() + "  |  Kolo: " + round + "  |  " + phase);
+        for (Participant participant : participants.values()) {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player != null && !participant.eliminated) player.sendMessage(hud, true);
         }
     }
 
