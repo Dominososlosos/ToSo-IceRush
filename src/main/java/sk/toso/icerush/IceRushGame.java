@@ -607,7 +607,8 @@ public final class IceRushGame {
         }
         lateSpectators.clear();
         occupiedSpots.clear();
-        resetCracks();\n        for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.discard();
+        resetCracks();
+        for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.discard();
         playerBoats.clear();
         state = State.WAITING;
         timer = 0;
