@@ -36,15 +36,8 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class IceRushGame {
     private enum State { WAITING, COUNTDOWN, RACING, PARKING, FINISHED }
 
-    private static final int MIN_PLAYERS = 2;
-    private static final int MAX_PLAYERS = 16;
-    private static final int COUNTDOWN_TICKS = 60;
-    private static final int PARKING_TICKS = 400;
-    private static final int FINISH_HOLD_TICKS = 160;
-    private static final int MIN_RIDE_TICKS = 500;
-    private static final int MAX_RIDE_TICKS = 800;
-    private static final double PARKING_RADIUS_SQUARED = 6.25;
 
+    private final IceRushConfig config = IceRushConfig.load();
     private final Map<UUID, Participant> participants = new LinkedHashMap<>();
     private final IceRushStatsStore statsStore = new IceRushStatsStore();
     private boolean resultsCommitted;
@@ -124,7 +117,7 @@ public final class IceRushGame {
             player.sendMessage(Text.literal("Už si v lobby.").formatted(Formatting.YELLOW), false);
             return 0;
         }
-        if (participants.size() >= MAX_PLAYERS) {
+        if (participants.size() >= config.maxPlayers) {
             player.sendMessage(Text.literal("ICE RUSH je plný (16 hráčov).").formatted(Formatting.RED), false);
             return 0;
         }
@@ -177,7 +170,7 @@ public final class IceRushGame {
             source.sendError(Text.literal("Hra už prebieha."));
             return 0;
         }
-        if (participants.size() < MIN_PLAYERS) {
+        if (participants.size() < config.minPlayers) {
             source.sendError(Text.literal("Na štart sú potrební aspoň 2 hráči."));
             return 0;
         }
@@ -221,13 +214,13 @@ public final class IceRushGame {
         for (int x = -45; x <= 45; x++) {
             for (int z = -45; z <= 45; z++) {
                 double radius = Math.sqrt((double) x * x + (double) z * z);
-                if (radius >= 38.5 && radius <= 45.0) {
+                if (radius >= config.trackInnerRadius && radius <= config.trackOuterRadius) {
                     arenaWorld.setBlockState(new BlockPos(cx + x, cy, cz + z), Blocks.BLUE_ICE.getDefaultState());
                 }
             }
         }
         // Vyvýšená lobby plošina 80 blokov nad úrovňou dráhy.
-        int lobbyY = cy + 80;
+        int lobbyY = cy + config.lobbyHeight;
         lobbyPosition = new Vec3d(cx + 0.5, lobbyY + 1.0, cz + 0.5);
         for (int x = -8; x <= 8; x++) {
             for (int z = -8; z <= 8; z++) {
@@ -236,9 +229,9 @@ public final class IceRushGame {
         }
         startPositions.clear();
         parkingSpots.clear();
-        for (int i = 0; i < MAX_PLAYERS; i++) {
+        for (int i = 0; i < config.maxPlayers; i++) {
             double angle = (Math.PI * 2.0 * i) / MAX_PLAYERS;
-            Vec3d position = new Vec3d(cx + Math.cos(angle) * 42.0 + 0.5, cy + 1.0, cz + Math.sin(angle) * 42.0 + 0.5);
+            Vec3d position = new Vec3d(cx + Math.cos(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5, cy + 1.0, cz + Math.sin(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5);
             startPositions.add(position);
             parkingSpots.add(position);
         }
@@ -345,7 +338,7 @@ public final class IceRushGame {
 
     private void beginCountdown(MinecraftServer server) {
         state = State.COUNTDOWN;
-        timer = COUNTDOWN_TICKS;
+        timer = config.countdownSeconds * 20;
         broadcast(server, Text.literal("ICE RUSH sa začína!").formatted(Formatting.GOLD, Formatting.BOLD));
     }
 
@@ -384,7 +377,7 @@ public final class IceRushGame {
             return;
         }
         if (state == State.PARKING) {
-            phaseBar.setPercent(Math.max(0.0F, Math.min(1.0F, timer / (float) PARKING_TICKS)));
+            phaseBar.setPercent(Math.max(0.0F, Math.min(1.0F, timer / (float) (config.parkingSeconds * 20))));
             if (server.getTicks() % 20 == 0) updateHud(server);
             enforceBoatSeats(server);
             tickCracks(server);
@@ -410,7 +403,7 @@ public final class IceRushGame {
         }
         occupiedSpots.clear();
         state = State.RACING;
-        timer = ThreadLocalRandom.current().nextInt(MIN_RIDE_TICKS, MAX_RIDE_TICKS + 1);
+        timer = ThreadLocalRandom.current().nextInt(config.minRideSeconds * 20, config.maxRideSeconds * 20 + 1);
         spawnRoundBoats(server);
         setupSpeedBars(server);
         phaseBar.setName(Text.literal("JAZDA — KOLO " + round));
@@ -429,7 +422,7 @@ public final class IceRushGame {
         phaseBar.setPercent(1.0F);
         Collections.shuffle(parkingSpots);
         state = State.PARKING;
-        timer = PARKING_TICKS;
+        timer = config.parkingSeconds * 20;
         occupiedSpots.clear();
         for (Participant p : participants.values()) { p.parked = false; p.parkingSpot = -1; }
         broadcast(server, Text.literal("PARKOVANIE! Máš 20 sekúnd na obsadenie miesta.").formatted(Formatting.GOLD, Formatting.BOLD));
@@ -450,10 +443,10 @@ public final class IceRushGame {
             Vec3d boatPosition = vehicle.getPos();
             for (int i = 0; i < Math.min(parkingSpots.size(), Math.max(0, activeCount() - 1)); i++) {
                 if (occupiedSpots.contains(i)) continue;
-                if (boatPosition.squaredDistanceTo(parkingSpots.get(i)) <= PARKING_RADIUS_SQUARED) {
+                if (boatPosition.squaredDistanceTo(parkingSpots.get(i)) <= config.parkingRadius * config.parkingRadius) {
                     participant.parked = true;
                     participant.parkingSpot = i;
-                    participant.parkingTimeTicks = PARKING_TICKS - timer;
+                    participant.parkingTimeTicks = config.parkingSeconds * 20 - timer;
                     occupiedSpots.add(i);
                     player.sendMessage(Text.literal("Parkovacie miesto obsadené!").formatted(Formatting.GREEN), true);
                     break;
@@ -549,7 +542,7 @@ public final class IceRushGame {
     }
 
     private void updateSpeedBars(MinecraftServer server) {
-        if (roundTicks < 100 || server.getTicks() % 5 != 0) return; // prvých 5 sekúnd sa rýchlosť nevyhodnocuje
+        if (roundTicks < config.speedGraceSeconds * 20 || server.getTicks() % 5 != 0) return; // prvých 5 sekúnd sa rýchlosť nevyhodnocuje
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
@@ -579,23 +572,23 @@ public final class IceRushGame {
             participant.turboTicks = 0;
             participant.turboZonesUsed.clear();
         }
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < config.turboZones; i++) {
             double angle = ThreadLocalRandom.current().nextDouble(Math.PI * 2.0);
-            turboZones.add(new Vec3d(arenaCenter.getX() + Math.cos(angle) * 42.0 + 0.5, arenaCenter.getY(), arenaCenter.getZ() + Math.sin(angle) * 42.0 + 0.5));
+            turboZones.add(new Vec3d(arenaCenter.getX() + Math.cos(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5, arenaCenter.getY(), arenaCenter.getZ() + Math.sin(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5));
         }
-        roundEvent = ThreadLocalRandom.current().nextInt(100) < 5
+        roundEvent = ThreadLocalRandom.current().nextInt(100) < config.eventChancePercent
             ? List.of("SNOW", "WIND", "SUPER_ICE", "TURBO_MADNESS", "FOG").get(ThreadLocalRandom.current().nextInt(5))
             : "NONE";
         if (!roundEvent.equals("NONE")) broadcast(server, Text.literal("NÁHODNÁ UDALOSŤ: " + roundEvent).formatted(Formatting.LIGHT_PURPLE, Formatting.BOLD));
         List<Integer> selected = new ArrayList<>();
         for (int i = 0; i < crackPositions.size(); i++) {
-            if (ThreadLocalRandom.current().nextInt(100) >= 10) continue;
+            if (ThreadLocalRandom.current().nextInt(100) >= config.crackChancePercent) continue;
             int crackIndex = i;
             boolean adjacent = selected.stream().anyMatch(n -> Math.abs(n - crackIndex) == 1 || Math.abs(n - crackIndex) == 7);
             if (adjacent) continue;
             selected.add(i);
             BlockPos pos = crackPositions.get(i);
-            warningCracks.put(pos, 40);
+            warningCracks.put(pos, config.crackWarningSeconds * 20);
             arenaWorld.spawnParticles(ParticleTypes.CRIT, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 12, 0.35, 0.15, 0.35, 0.02);
             arenaWorld.playSound(null, pos, SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.BLOCKS, 0.8F, 0.7F);
         }
@@ -654,12 +647,12 @@ public final class IceRushGame {
                 if (participant.turboZonesUsed.contains(i)) continue;
                 if (velocity.horizontalLength() < 0.18) continue; // bonus iba pri zelenej (rýchlej) jazde
                 participant.turboZonesUsed.add(i);
-                participant.turboTicks = 40; // 2 sekundy; ďalší zásah obnoví čas, bonus sa nesčítava
+                participant.turboTicks = config.turboDurationSeconds * 20; // 2 sekundy; ďalší zásah obnoví čas, bonus sa nesčítava
                 participant.turboBonuses++;
-                participant.points += 2;
+                participant.points += config.turboBonusPoints;
                 arenaWorld.spawnParticles(ParticleTypes.FIREWORK, boat.getX(), boat.getY() + 0.5, boat.getZ(), 18, 0.5, 0.3, 0.5, 0.08);
                 arenaWorld.playSound(null, boat.getBlockPos(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 1.0F, 1.4F);
-                player.sendMessage(Text.literal("TURBO! +2 body").formatted(Formatting.GREEN, Formatting.BOLD), true);
+                player.sendMessage(Text.literal("TURBO! +" + config.turboBonusPoints + " body").formatted(Formatting.GREEN, Formatting.BOLD), true);
                 break;
             }
         }
@@ -738,7 +731,7 @@ public final class IceRushGame {
         phaseBar.clearPlayers();
         winner = participants.values().stream().filter(p -> !p.eliminated).map(p -> p.id).findFirst().orElse(null);
         state = State.FINISHED;
-        timer = FINISH_HOLD_TICKS;
+        timer = config.finishHoldSeconds * 20;
         if (winner != null) {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(winner);
             String name = player == null ? "Víťaz" : player.getName().getString();
