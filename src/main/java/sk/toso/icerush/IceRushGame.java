@@ -427,13 +427,14 @@ public final class IceRushGame {
         } else {
             for (Participant p : participants.values()) { p.parked = false; p.parkingSpot = -1; }
             admitLateSpectators(server);
+            round++;
             state = State.RACING;
             timer = ThreadLocalRandom.current().nextInt(MIN_RIDE_TICKS, MAX_RIDE_TICKS + 1);
             spawnRoundBoats(server);
             setupSpeedBars(server);
             roundTicks = 0;
             prepareRoundModifiers(server);
-            broadcast(server, Text.literal("Kolo " + (round + 1) + " začína! Zostáva hráčov: " + activeCount()).formatted(Formatting.AQUA, Formatting.BOLD));
+            broadcast(server, Text.literal("Kolo " + round + " začína! Zostáva hráčov: " + activeCount()).formatted(Formatting.AQUA, Formatting.BOLD));
         }
     }
 
