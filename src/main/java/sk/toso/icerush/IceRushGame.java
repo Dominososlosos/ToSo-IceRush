@@ -98,6 +98,7 @@ public final class IceRushGame {
             .then(CommandManager.literal("top").executes(ctx -> showTop(ctx.getSource())))
             .then(CommandManager.literal("achievements").executes(ctx -> showAchievements(ctx.getSource())))
             .then(CommandManager.literal("lastwinner").executes(ctx -> showLastWinner(ctx.getSource())))
+            .then(CommandManager.literal("rules").executes(ctx -> showRules(ctx.getSource())))
             .then(CommandManager.literal("start").requires(s -> s.hasPermissionLevel(2))
                 .executes(ctx -> start(ctx.getSource())))
             .then(CommandManager.literal("reset").requires(s -> s.hasPermissionLevel(2))
@@ -291,6 +292,16 @@ public final class IceRushGame {
             int place = rank++;
             source.sendFeedback(() -> Text.literal(place + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")"), false);
         }
+        return 1;
+    }
+
+    private int showRules(ServerCommandSource source) {
+        source.sendFeedback(() -> Text.literal("ICE RUSH — PRAVIDLÁ"), false);
+        source.sendFeedback(() -> Text.literal("2–16 hráčov. Po 80 % READY nasleduje odpočet 3–2–1–ŠTART."), false);
+        source.sendFeedback(() -> Text.literal("Počas jazdy zostaň v loďke. Rýchlostné zóny, turbo a trhliny menia priebeh kola."), false);
+        source.sendFeedback(() -> Text.literal("Po 25–40 sekundách príde parkovanie. Miest je o jedno menej než aktívnych hráčov."), false);
+        source.sendFeedback(() -> Text.literal("Zaparkovanie: +10 bodov, prežitie kola: +5, turbo: +2, 2. miesto: +60, 3. miesto: +40, výhra: +100."), false);
+        source.sendFeedback(() -> Text.literal("Vyhráva posledný zostávajúci hráč. Príkazy: /icerush join, /icerush ready, /icerush stats, /icerush top."), false);
         return 1;
     }
 
