@@ -1460,5 +1460,9 @@ public final class IceRushGame {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player != null) player.sendMessage(message, false);
         }
+        for (UUID id : lateSpectators) {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
+            if (player != null) player.sendMessage(message, false);
+        }
     }
 }
