@@ -358,6 +358,7 @@ public final class IceRushGame {
         state = State.COUNTDOWN;
         timer = config.countdownSeconds * 20;
         broadcast(server, Text.literal("ICE RUSH sa začína!").formatted(Formatting.GOLD, Formatting.BOLD));
+        broadcast(server, Text.literal(String.valueOf(config.countdownSeconds)).formatted(Formatting.YELLOW, Formatting.BOLD));
     }
 
     public void tick(MinecraftServer server) {
@@ -381,9 +382,11 @@ public final class IceRushGame {
                 }
             }
             timer--;
-            if (timer == config.countdownSeconds * 20 - 20 || timer == config.countdownSeconds * 20 - 40 || timer == 0) {
-                String label = timer == 40 ? "3" : timer == 20 ? "2" : "1";
-                broadcast(server, Text.literal(label).formatted(Formatting.YELLOW, Formatting.BOLD));
+            if (timer > 0 && timer % 20 == 0) {
+                int secondsLeft = timer / 20;
+                if (secondsLeft < config.countdownSeconds) {
+                    broadcast(server, Text.literal(String.valueOf(secondsLeft)).formatted(Formatting.YELLOW, Formatting.BOLD));
+                }
             }
             if (timer <= 0) startRound(server);
             return;
