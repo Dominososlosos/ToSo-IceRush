@@ -58,6 +58,7 @@ public final class IceRushGame {
     private Vec3d lobbyPosition;
     private boolean countdownNeedsValidation;
     private boolean boatsLocked;
+    private boolean lobbyCountdown;
     private State state = State.WAITING;
     private int timer;
     private int round;
@@ -133,7 +134,7 @@ public final class IceRushGame {
     }
 
     private int leave(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
-        if (state != State.WAITING && state != State.COUNTDOWN) {
+        if (state != State.WAITING && !(state == State.COUNTDOWN && lobbyCountdown)) {
             source.sendError(Text.literal("Počas prebiehajúcej jazdy už nemôžeš opustiť zostavu."));
             return 0;
         }
@@ -353,11 +354,25 @@ public final class IceRushGame {
     }
 
     private void beginCountdown(MinecraftServer server) {
+        startCountdown(server, true);
+    }
+
+    private void beginNextRoundCountdown(MinecraftServer server) {
+        startCountdown(server, false);
+    }
+
+    private void startCountdown(MinecraftServer server, boolean forLobby) {
         spawnRoundBoats(server);
         boatsLocked = true;
+        lobbyCountdown = forLobby;
         state = State.COUNTDOWN;
         timer = config.countdownSeconds * 20;
-        broadcast(server, Text.literal("ICE RUSH sa začína!").formatted(Formatting.GOLD, Formatting.BOLD));
+        phaseBar.setName(Text.literal(forLobby ? "ŠTARTOVÝ ODPOČET" : "PRÍPRAVA NA KOLO " + (round + 1)));
+        phaseBar.setColor(BossBar.Color.YELLOW);
+        phaseBar.setPercent(1.0F);
+        addPhaseBarPlayers(server);
+        if (forLobby) broadcast(server, Text.literal("ICE RUSH sa začína!").formatted(Formatting.GOLD, Formatting.BOLD));
+        else broadcast(server, Text.literal("Priprav sa na ďalšie kolo!").formatted(Formatting.GOLD, Formatting.BOLD));
         broadcast(server, Text.literal(String.valueOf(config.countdownSeconds)).formatted(Formatting.YELLOW, Formatting.BOLD));
     }
 
@@ -370,7 +385,7 @@ public final class IceRushGame {
                 broadcast(server, Text.literal("Odpočet zrušený — aréna nie je nastavená.").formatted(Formatting.RED));
                 return;
             }
-            if (countdownNeedsValidation) {
+            if (lobbyCountdown && countdownNeedsValidation) {
                 countdownNeedsValidation = false;
                 recheckCountdown(server);
                 if (state != State.COUNTDOWN) return;
