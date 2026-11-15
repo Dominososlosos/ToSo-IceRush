@@ -439,7 +439,8 @@ public final class IceRushGame {
         List<Integer> selected = new ArrayList<>();
         for (int i = 0; i < crackPositions.size(); i++) {
             if (ThreadLocalRandom.current().nextInt(100) >= 10) continue;
-            boolean adjacent = selected.stream().anyMatch(n -> Math.abs(n - i) == 1 || Math.abs(n - i) == 7);
+            int crackIndex = i;
+            boolean adjacent = selected.stream().anyMatch(n -> Math.abs(n - crackIndex) == 1 || Math.abs(n - crackIndex) == 7);
             if (adjacent) continue;
             selected.add(i);
             BlockPos pos = crackPositions.get(i);
@@ -458,7 +459,7 @@ public final class IceRushGame {
     }
 
     private void tickCracks(MinecraftServer server) {
-        if (arenaWorld == null || warningCracks.isEmpty()) return;
+        if (arenaWorld == null) return;
         for (Map.Entry<BlockPos, Integer> entry : new ArrayList<>(warningCracks.entrySet())) {
             BlockPos pos = entry.getKey();
             int left = entry.getValue() - 1;
@@ -502,7 +503,6 @@ public final class IceRushGame {
                 participant.turboTicks = 40; // 2 sekundy; ďalší zásah obnoví čas, bonus sa nesčítava
                 participant.turboBonuses++;
                 participant.points += 2;
-                boat.setVelocity(boat.getVelocity().multiply(1.05));
                 arenaWorld.spawnParticles(ParticleTypes.FIREWORK, boat.getX(), boat.getY() + 0.5, boat.getZ(), 18, 0.5, 0.3, 0.5, 0.08);
                 arenaWorld.playSound(null, boat.getBlockPos(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 1.0F, 1.4F);
                 player.sendMessage(Text.literal("TURBO! +2 body").formatted(Formatting.GREEN, Formatting.BOLD), true);
