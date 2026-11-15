@@ -30,6 +30,7 @@ The mod JAR is created in `build/libs/`.
 - `/icerush start` — admin start (requires 80% ready)
 - `/icerush addspot` — admin: save a parking location at your current position
 - `/icerush clearspots` — admin: remove configured parking locations
+- `/icerush defaultspots` — admin: restore the generated parking positions
 - `/icerush setup` — admin: generate the 90-block circular Blue Ice track and elevated lobby platform
 - `/icerush reset` — admin reset
 
@@ -38,7 +39,7 @@ The Fabric server mod currently includes the lobby commands, one-time READY vote
 
 ## Setup
 1. Run `/icerush setup` while standing at the intended arena center. This builds the Blue Ice ring and a raised lobby platform.
-2. The arena setup creates up to the configured maximum number of candidate parking positions automatically. If you want custom positions, clear them with `/icerush clearspots` and add your own using `/icerush addspot`.
+2. The arena setup creates up to the configured maximum number of candidate parking positions automatically. If you want custom positions, clear them with `/icerush clearspots` and add your own using `/icerush addspot`. Custom parking positions are saved in the config and restored after restart; use `/icerush defaultspots` to restore the generated positions.
 3. Players run `/icerush join`, then `/icerush ready`. The game starts after at least 80% have voted READY and enough parking positions exist.
 4. Admins can inspect the state with `/icerush status` and stop/reset with `/icerush reset`.
 
