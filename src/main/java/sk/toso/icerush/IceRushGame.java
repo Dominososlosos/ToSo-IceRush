@@ -707,7 +707,17 @@ public final class IceRushGame {
             double angle = ThreadLocalRandom.current().nextDouble(Math.PI * 2.0);
             turboZones.add(new Vec3d(arenaCenter.getX() + Math.cos(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5, arenaCenter.getY(), arenaCenter.getZ() + Math.sin(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5));
         }
-        if (!roundEvent.equals("NONE")) broadcast(server, Text.literal("NÁHODNÁ UDALOSŤ: " + roundEvent).formatted(Formatting.LIGHT_PURPLE, Formatting.BOLD));
+        if (!roundEvent.equals("NONE")) {
+            String eventName = switch (roundEvent) {
+                case "SNOW" -> "SNEŽENIE";
+                case "WIND" -> "VIETOR";
+                case "SUPER_ICE" -> "SUPER KLZKÝ ĽAD";
+                case "TURBO_MADNESS" -> "TURBO ŠIALENSTVO";
+                case "FOG" -> "HMLA";
+                default -> roundEvent;
+            };
+            broadcast(server, Text.literal("MIMORIADNA UDALOSŤ: " + eventName).formatted(Formatting.LIGHT_PURPLE, Formatting.BOLD));
+        }
         List<Integer> selected = new ArrayList<>();
         for (int i = 0; i < crackPositions.size(); i++) {
             if (ThreadLocalRandom.current().nextInt(100) >= config.crackChancePercent) continue;
