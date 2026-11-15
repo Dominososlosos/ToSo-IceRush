@@ -682,7 +682,7 @@ public final class IceRushGame {
     private void admitLateSpectators(MinecraftServer server) {
         if (lateSpectators.isEmpty() || participants.size() >= config.maxPlayers) return;
         for (UUID id : new ArrayList<>(lateSpectators)) {
-            if (participants.size() >= MAX_PLAYERS) break;
+            if (participants.size() >= config.maxPlayers) break;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
             if (player == null) continue;
             participants.put(id, new Participant(id));
