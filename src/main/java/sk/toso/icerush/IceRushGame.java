@@ -124,7 +124,7 @@ public final class IceRushGame {
         participants.put(player.getUuid(), new Participant(player.getUuid()));
         teleportToLobby(player);
         player.changeGameMode(GameMode.ADVENTURE);
-        broadcast(source.getServer(), Text.literal(player.getName().getString() + " sa pripojil do ICE RUSH (" + participants.size() + "/" + MAX_PLAYERS + ").").formatted(Formatting.AQUA));
+        broadcast(source.getServer(), Text.literal(player.getName().getString() + " sa pripojil do ICE RUSH (" + participants.size() + "/" + config.maxPlayers + ").").formatted(Formatting.AQUA));
         return 1;
     }
 
@@ -230,7 +230,7 @@ public final class IceRushGame {
         startPositions.clear();
         parkingSpots.clear();
         for (int i = 0; i < config.maxPlayers; i++) {
-            double angle = (Math.PI * 2.0 * i) / MAX_PLAYERS;
+            double angle = (Math.PI * 2.0 * i) / config.maxPlayers;
             Vec3d position = new Vec3d(cx + Math.cos(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5, cy + 1.0, cz + Math.sin(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5);
             startPositions.add(position);
             parkingSpots.add(position);
@@ -318,7 +318,7 @@ public final class IceRushGame {
     }
 
     private void tryStartCountdown(MinecraftServer server) {
-        if (state != State.WAITING || participants.size() < MIN_PLAYERS || arenaWorld == null) return;
+        if (state != State.WAITING || participants.size() < config.minPlayers || arenaWorld == null) return;
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
         int required = (int) Math.ceil(participants.size() * 0.80);
         if (readyCount >= required && parkingSpots.size() >= participants.size() - 1) beginCountdown(server);
@@ -329,7 +329,7 @@ public final class IceRushGame {
         int players = participants.size();
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
         int required = (int) Math.ceil(players * 0.80);
-        if (players < MIN_PLAYERS || readyCount < required || parkingSpots.size() < players - 1) {
+        if (players < config.minPlayers || readyCount < required || parkingSpots.size() < players - 1) {
             state = State.WAITING;
             timer = 0;
             broadcast(server, Text.literal("Odpočet zrušený — podmienka 80 % READY alebo počet hráčov už nie je splnený.").formatted(Formatting.RED));
@@ -489,7 +489,7 @@ public final class IceRushGame {
             admitLateSpectators(server);
             round++;
             state = State.RACING;
-            timer = ThreadLocalRandom.current().nextInt(MIN_RIDE_TICKS, MAX_RIDE_TICKS + 1);
+            timer = ThreadLocalRandom.current().nextInt(config.minRideSeconds * 20, config.maxRideSeconds * 20 + 1);
             spawnRoundBoats(server);
             setupSpeedBars(server);
             phaseBar.setName(Text.literal("JAZDA — KOLO " + round));
@@ -680,7 +680,7 @@ public final class IceRushGame {
     }
 
     private void admitLateSpectators(MinecraftServer server) {
-        if (lateSpectators.isEmpty() || participants.size() >= MAX_PLAYERS) return;
+        if (lateSpectators.isEmpty() || participants.size() >= config.maxPlayers) return;
         for (UUID id : new ArrayList<>(lateSpectators)) {
             if (participants.size() >= MAX_PLAYERS) break;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
