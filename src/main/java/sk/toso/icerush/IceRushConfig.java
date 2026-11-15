@@ -8,6 +8,8 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 final class IceRushConfig {
     int minPlayers = 2;
@@ -38,6 +40,8 @@ final class IceRushConfig {
     double arenaInnerRadius = 38.0;
     double arenaOuterRadius = 45.0;
     int arenaLobbyHeight = 80;
+    boolean parkingSpotsCustomized = false;
+    List<double[]> customParkingSpots = new ArrayList<>();
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private transient final Path file = FabricLoader.getInstance().getConfigDir().resolve("icerush.json");
@@ -91,6 +95,8 @@ final class IceRushConfig {
         arenaInnerRadius = loaded.arenaInnerRadius;
         arenaOuterRadius = loaded.arenaOuterRadius;
         arenaLobbyHeight = loaded.arenaLobbyHeight;
+        parkingSpotsCustomized = loaded.parkingSpotsCustomized;
+        customParkingSpots = loaded.customParkingSpots == null ? new ArrayList<>() : new ArrayList<>(loaded.customParkingSpots);
     }
 
     private void validate() {
