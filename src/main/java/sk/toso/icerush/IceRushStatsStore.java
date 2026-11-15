@@ -64,6 +64,7 @@ final class IceRushStatsStore {
 
     synchronized List<Map.Entry<UUID, PlayerStats>> top(int limit) {
         return data.entrySet().stream()
+            .filter(entry -> entry.getValue().gamesPlayed > 0 || entry.getValue().points > 0)
             .sorted(Map.Entry.<UUID, PlayerStats>comparingByValue(Comparator.comparingInt((PlayerStats s) -> s.points).reversed()
                 .thenComparing(Comparator.comparingInt((PlayerStats s) -> s.wins).reversed())))
             .limit(limit)
