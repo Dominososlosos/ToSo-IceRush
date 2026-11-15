@@ -558,8 +558,11 @@ public final class IceRushGame {
                 participant.turboTicks--;
             }
             for (int i = 0; i < turboZones.size(); i++) {
+                if (boat.getPos().squaredDistanceTo(turboZones.get(i)) > 9.0) {
+                    participant.turboZonesUsed.remove(i);
+                    continue;
+                }
                 if (participant.turboZonesUsed.contains(i)) continue;
-                if (boat.getPos().squaredDistanceTo(turboZones.get(i)) > 9.0) continue;
                 if (velocity.horizontalLength() < 0.12) continue; // bonus iba pri zelenej (rýchlej) jazde
                 participant.turboZonesUsed.add(i);
                 participant.turboTicks = 40; // 2 sekundy; ďalší zásah obnoví čas, bonus sa nesčítava
