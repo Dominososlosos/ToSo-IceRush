@@ -315,6 +315,7 @@ public final class IceRushGame {
             return;
         }
         if (state == State.PARKING) {
+            enforceBoatSeats(server);
             updateParking(server);
             timer--;
             int requiredSpots = Math.max(0, activeCount() - 1);
@@ -439,9 +440,7 @@ public final class IceRushGame {
                 boat.setPosition(pos);
                 boat.setVelocity(Vec3d.ZERO);
             }
-            if (player.getServerWorld() != arenaWorld) {
-                player.teleport(arenaWorld, pos.x, pos.y + 1.0, pos.z, Set.of(), player.getYaw(), 0.0F, true);
-            }
+            player.teleport(arenaWorld, pos.x, pos.y + 1.0, pos.z, Set.of(), player.getYaw(), 0.0F, true);
             player.startRiding(boat, true);
         }
     }
