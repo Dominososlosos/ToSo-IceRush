@@ -97,6 +97,7 @@ public final class IceRushGame {
             .then(CommandManager.literal("status").executes(ctx -> status(ctx.getSource())))
             .then(CommandManager.literal("stats").executes(ctx -> showStats(ctx.getSource())))
             .then(CommandManager.literal("top").executes(ctx -> showTop(ctx.getSource())))
+            .then(CommandManager.literal("achievements").executes(ctx -> showAchievements(ctx.getSource())))
             .then(CommandManager.literal("start").requires(s -> s.hasPermissionLevel(2))
                 .executes(ctx -> start(ctx.getSource())))
             .then(CommandManager.literal("reset").requires(s -> s.hasPermissionLevel(2))
@@ -276,6 +277,16 @@ public final class IceRushGame {
             message.append(Text.literal(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")\n"));
         }
         source.sendFeedback(() -> message, false);
+        return 1;
+    }
+
+    private int showAchievements(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayerEntity player = source.getPlayerOrThrow();
+        IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
+        MutableText message = Text.literal("ICE RUSH — ACHIEVEMENTY\n");
+        if (stats.achievements.isEmpty()) message.append(Text.literal("Zatiaľ nemáš odomknuté achievementy."));
+        else for (String achievement : stats.achievements) message.append(Text.literal("• " + achievement + "\n"));
+        player.sendMessage(message, false);
         return 1;
     }
 
@@ -738,19 +749,23 @@ public final class IceRushGame {
         } else {
             broadcast(server, Text.literal("ICE RUSH sa skončilo bez víťaza.").formatted(Formatting.RED));
         }
-        commitResults();
+        commitResults(server);
     }
 
-    private void commitResults() {
+    private void commitResults(MinecraftServer server) {
         if (resultsCommitted) return;
         resultsCommitted = true;
         for (Participant participant : participants.values()) {
             IceRushStatsStore.PlayerStats stats = statsStore.get(participant.id);
             stats.gamesPlayed++;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player != null) stats.playerName = player.getName().getString();
             stats.points += participant.points;
             stats.turboBonuses += participant.turboBonuses;
-            if (participant.id.equals(winner)) stats.wins++;
-            else stats.losses++;
+            if (participant.id.equals(winner)) {
+                stats.wins++;
+                if (!stats.achievements.contains("First Win")) stats.achievements.add("First Win");
+            } else stats.losses++;
         }
         statsStore.save();
     }
