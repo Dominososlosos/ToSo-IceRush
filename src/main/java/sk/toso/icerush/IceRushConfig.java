@@ -35,6 +35,9 @@ final class IceRushConfig {
     int arenaX;
     int arenaY;
     int arenaZ;
+    double arenaInnerRadius = 38.0;
+    double arenaOuterRadius = 45.0;
+    int arenaLobbyHeight = 80;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private transient final Path file = FabricLoader.getInstance().getConfigDir().resolve("icerush.json");
@@ -85,6 +88,9 @@ final class IceRushConfig {
         arenaX = loaded.arenaX;
         arenaY = loaded.arenaY;
         arenaZ = loaded.arenaZ;
+        arenaInnerRadius = loaded.arenaInnerRadius;
+        arenaOuterRadius = loaded.arenaOuterRadius;
+        arenaLobbyHeight = loaded.arenaLobbyHeight;
     }
 
     private void validate() {
