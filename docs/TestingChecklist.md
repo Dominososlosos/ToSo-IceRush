@@ -19,6 +19,7 @@ Install the built ICE RUSH JAR in the server `mods` folder and start the server.
 - [ ] Verify the circular Blue Ice ring: 90-block outside diameter, 7-block width, empty middle.
 - [ ] Verify the lobby is 80 blocks above the track and has a glass viewing section.
 - [ ] Verify the six physical lobby controls: JOIN, READY, PRAVIDLÁ, TOP 10, ŠTATISTIKY, POSLEDNÝ VÍŤAZ.
+- [ ] Verify the in-world TOP 10 board and last-winner display update after a completed match.
 - [ ] Right-click each control and verify that it invokes the matching action.
 - [ ] Verify the sidebar displays the waiting-room player count and READY count.
 - [ ] Restart the server and verify the saved arena is restored without rebuilding or duplicating lobby controls.
