@@ -425,7 +425,48 @@ public final class IceRushGame {
         }
     }
 
-    private void setupSpeedBars(MinecraftServer server) {\n        clearSpeedBars();\n        for (Participant participant : participants.values()) {\n            if (participant.eliminated) continue;\n            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);\n            if (player == null) continue;\n            ServerBossBar bar = new ServerBossBar(Text.literal("RÝCHLOSŤ — OCHRANA ŠTARTU"), BossBar.Color.YELLOW, BossBar.Style.PROGRESS);\n            bar.setPercent(0.5F);\n            bar.addPlayer(player);\n            speedBars.put(participant.id, bar);\n        }\n    }\n\n    private void clearSpeedBars() {\n        for (ServerBossBar bar : speedBars.values()) bar.clearPlayers();\n        speedBars.clear();\n    }\n\n    private void updateSpeedBars(MinecraftServer server) {\n        if (roundTicks < 100 || server.getTicks() % 5 != 0) return; // prvých 5 sekúnd sa rýchlosť nevyhodnocuje\n        for (Participant participant : participants.values()) {\n            if (participant.eliminated) continue;\n            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);\n            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;\n            double speed = boat.getVelocity().horizontalLength();\n            ServerBossBar bar = speedBars.get(participant.id);\n            if (bar == null) continue;\n            if (speed >= 0.18) {\n                bar.setColor(BossBar.Color.GREEN);\n                bar.setName(Text.literal("RÝCHLOSŤ — RÝCHLA"));\n            } else if (speed >= 0.10) {\n                bar.setColor(BossBar.Color.YELLOW);\n                bar.setName(Text.literal("RÝCHLOSŤ — STREDNÁ"));\n            } else {\n                bar.setColor(BossBar.Color.RED);\n                bar.setName(Text.literal("RÝCHLOSŤ — POMALÁ"));\n            }\n            bar.setPercent((float) Math.max(0.0, Math.min(1.0, speed / 0.30)));\n        }\n    }\n\n    private void prepareRoundModifiers(MinecraftServer server) {
+    private void setupSpeedBars(MinecraftServer server) {
+        clearSpeedBars();
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player == null) continue;
+            ServerBossBar bar = new ServerBossBar(Text.literal("RÝCHLOSŤ — OCHRANA ŠTARTU"), BossBar.Color.YELLOW, BossBar.Style.PROGRESS);
+            bar.setPercent(0.5F);
+            bar.addPlayer(player);
+            speedBars.put(participant.id, bar);
+        }
+    }
+
+    private void clearSpeedBars() {
+        for (ServerBossBar bar : speedBars.values()) bar.clearPlayers();
+        speedBars.clear();
+    }
+
+    private void updateSpeedBars(MinecraftServer server) {
+        if (roundTicks < 100 || server.getTicks() % 5 != 0) return; // prvých 5 sekúnd sa rýchlosť nevyhodnocuje
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
+            double speed = boat.getVelocity().horizontalLength();
+            ServerBossBar bar = speedBars.get(participant.id);
+            if (bar == null) continue;
+            if (speed >= 0.18) {
+                bar.setColor(BossBar.Color.GREEN);
+                bar.setName(Text.literal("RÝCHLOSŤ — RÝCHLA"));
+            } else if (speed >= 0.10) {
+                bar.setColor(BossBar.Color.YELLOW);
+                bar.setName(Text.literal("RÝCHLOSŤ — STREDNÁ"));
+            } else {
+                bar.setColor(BossBar.Color.RED);
+                bar.setName(Text.literal("RÝCHLOSŤ — POMALÁ"));
+            }
+            bar.setPercent((float) Math.max(0.0, Math.min(1.0, speed / 0.30)));
+        }
+    }
+
+    private void prepareRoundModifiers(MinecraftServer server) {
         resetCracks();
         turboZones.clear();
         for (Participant participant : participants.values()) {
