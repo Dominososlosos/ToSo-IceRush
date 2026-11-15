@@ -27,4 +27,4 @@ The Fabric mod creates `config/icerush.json` on the first server start. Edit the
 
 Values are clamped to safe ranges when the config is loaded. The minimum-speed percentage and speed reference determine the nine displayed BossBar tiers from 60% to 100%. The physical boat-speed scaling for those tiers is still pending.
 
-Completed-game statistics are saved separately in `config/icerush-stats.json`. An administrator reset does not count as a completed game and does not save that round's results.
+Custom parking positions are stored in the same config file. Use `/icerush clearspots` and `/icerush addspot` to define them, or `/icerush defaultspots` to return to generated positions. Completed-game statistics are saved separately in `config/icerush-stats.json`. An administrator reset does not count as a completed game and does not save that round's results.
