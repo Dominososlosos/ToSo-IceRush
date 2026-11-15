@@ -15,6 +15,9 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.block.Blocks;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.world.GameMode;
 
 import java.util.ArrayList;
@@ -45,6 +48,11 @@ public final class IceRushGame {
     private final Set<UUID> lateSpectators = new HashSet<>();
     private final Map<UUID, BoatEntity> playerBoats = new LinkedHashMap<>();
     private final List<Vec3d> startPositions = new ArrayList<>();
+    private final List<Vec3d> turboZones = new ArrayList<>();
+    private final List<BlockPos> crackPositions = new ArrayList<>();
+    private final Set<BlockPos> openCracks = new HashSet<>();
+    private final Map<BlockPos, Integer> warningCracks = new LinkedHashMap<>();
+    private String roundEvent = "NONE";
     private ServerWorld arenaWorld;
     private BlockPos arenaCenter;
     private boolean countdownNeedsValidation;
@@ -60,6 +68,9 @@ public final class IceRushGame {
         private boolean parked;
         private int parkingSpot = -1;
         private int points;
+        private int turboTicks;
+        private int turboBonuses;
+        private final Set<Integer> turboZonesUsed = new HashSet<>();
 
         private Participant(UUID id) {
             this.id = id;
@@ -409,7 +420,7 @@ public final class IceRushGame {
         }
     }
 
-    private void admitLateSpectators(MinecraftServer server) {
+    private void prepareRoundModifiers(MinecraftServer server) {\n        resetCracks();\n        turboZones.clear();\n        for (Participant participant : participants.values()) {\n            participant.turboTicks = 0;\n            participant.turboZonesUsed.clear();\n        }\n        for (int i = 0; i < 6; i++) {\n            double angle = ThreadLocalRandom.current().nextDouble(Math.PI * 2.0);\n            turboZones.add(new Vec3d(arenaCenter.getX() + Math.cos(angle) * 42.0 + 0.5, arenaCenter.getY(), arenaCenter.getZ() + Math.sin(angle) * 42.0 + 0.5));\n        }\n        roundEvent = ThreadLocalRandom.current().nextInt(100) < 5\n            ? List.of("SNOW", "WIND", "SUPER_ICE", "TURBO_MADNESS", "FOG").get(ThreadLocalRandom.current().nextInt(5))\n            : "NONE";\n        if (!roundEvent.equals("NONE")) broadcast(server, Text.literal("NÁHODNÁ UDALOSŤ: " + roundEvent).formatted(Formatting.LIGHT_PURPLE, Formatting.BOLD));\n        List<Integer> selected = new ArrayList<>();\n        for (int i = 0; i < crackPositions.size(); i++) {\n            if (ThreadLocalRandom.current().nextInt(100) >= 10) continue;\n            boolean adjacent = selected.stream().anyMatch(n -> Math.abs(n - i) == 1 || Math.abs(n - i) == 7);\n            if (adjacent) continue;\n            selected.add(i);\n            BlockPos pos = crackPositions.get(i);\n            warningCracks.put(pos, 40);\n            arenaWorld.spawnParticles(ParticleTypes.CRIT, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 12, 0.35, 0.15, 0.35, 0.02);\n            arenaWorld.playSound(null, pos, SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.BLOCKS, 0.8F, 0.7F);\n        }\n    }\n\n    private void resetCracks() {\n        if (arenaWorld != null) {\n            for (BlockPos pos : openCracks) arenaWorld.setBlockState(pos, Blocks.BLUE_ICE.getDefaultState());\n        }\n        openCracks.clear();\n        warningCracks.clear();\n    }\n\n    private void tickCracks(MinecraftServer server) {\n        if (arenaWorld == null || warningCracks.isEmpty()) return;\n        for (Map.Entry<BlockPos, Integer> entry : new ArrayList<>(warningCracks.entrySet())) {\n            BlockPos pos = entry.getKey();\n            int left = entry.getValue() - 1;\n            if (left <= 0) {\n                arenaWorld.setBlockState(pos, Blocks.AIR.getDefaultState());\n                openCracks.add(pos);\n                warningCracks.remove(pos);\n                arenaWorld.spawnParticles(ParticleTypes.CLOUD, pos.getX() + 0.5, pos.getY() + 0.4, pos.getZ() + 0.5, 18, 0.4, 0.1, 0.4, 0.02);\n            } else {\n                warningCracks.put(pos, left);\n                if (left % 10 == 0) arenaWorld.spawnParticles(ParticleTypes.CRIT, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 5, 0.25, 0.1, 0.25, 0.01);\n            }\n        }\n        for (Participant participant : participants.values()) {\n            if (participant.eliminated) continue;\n            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);\n            if (player != null && player.getVehicle() instanceof BoatEntity boat && boat.getY() < arenaCenter.getY() - 2) {\n                participant.eliminated = true;\n                player.stopRiding();\n                player.changeGameMode(GameMode.SPECTATOR);\n                player.sendMessage(Text.literal("VYPADÁVAŠ! Prepadol si sa cez prasknutý ľad.").formatted(Formatting.RED, Formatting.BOLD), false);\n            }\n        }\n    }\n\n    private void tickTurbo(MinecraftServer server) {\n        for (Participant participant : participants.values()) {\n            if (participant.eliminated) continue;\n            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);\n            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;\n            Vec3d velocity = boat.getVelocity();\n            if (participant.turboTicks > 0) {\n                boat.setVelocity(velocity.multiply(1.0012));\n                participant.turboTicks--;\n            }\n            for (int i = 0; i < turboZones.size(); i++) {\n                if (participant.turboZonesUsed.contains(i)) continue;\n                if (boat.getPos().squaredDistanceTo(turboZones.get(i)) > 9.0) continue;\n                if (velocity.horizontalLength() < 0.12) continue; // bonus iba pri zelenej (rýchlej) jazde\n                participant.turboZonesUsed.add(i);\n                participant.turboTicks = 40; // 2 sekundy; ďalší zásah obnoví čas, bonus sa nesčítava\n                participant.turboBonuses++;\n                participant.points += 2;\n                boat.setVelocity(boat.getVelocity().multiply(1.05));\n                arenaWorld.spawnParticles(ParticleTypes.FIREWORK, boat.getX(), boat.getY() + 0.5, boat.getZ(), 18, 0.5, 0.3, 0.5, 0.08);\n                arenaWorld.playSound(null, boat.getBlockPos(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 1.0F, 1.4F);\n                player.sendMessage(Text.literal("TURBO! +2 body").formatted(Formatting.GREEN, Formatting.BOLD), true);\n                break;\n            }\n        }\n    }\n\n    private void applyRoundEvent(MinecraftServer server) {\n        if (roundEvent.equals("NONE") || arenaWorld == null) return;\n        for (Participant participant : participants.values()) {\n            if (participant.eliminated) continue;\n            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);\n            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;\n            if (roundEvent.equals("SNOW") && server.getTicks() % 10 == 0) {\n                arenaWorld.spawnParticles(ParticleTypes.SNOWFLAKE, boat.getX(), boat.getY() + 1.0, boat.getZ(), 8, 0.7, 0.3, 0.7, 0.01);\n            } else if (roundEvent.equals("WIND")) {\n                double yaw = Math.toRadians(boat.getYaw());\n                boat.addVelocity(-Math.sin(yaw) * 0.0008, 0.0, Math.cos(yaw) * 0.0008);\n            } else if (roundEvent.equals("SUPER_ICE")) {\n                boat.setVelocity(boat.getVelocity().multiply(1.0005));\n            } else if (roundEvent.equals("TURBO_MADNESS") && participant.turboTicks > 0) {\n                boat.setVelocity(boat.getVelocity().multiply(1.0008));\n            } else if (roundEvent.equals("FOG") && server.getTicks() % 20 == 0) {\n                arenaWorld.spawnParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, boat.getX(), boat.getY() + 0.4, boat.getZ(), 5, 1.0, 0.2, 1.0, 0.01);\n            }\n        }\n    }\n\n    private void admitLateSpectators(MinecraftServer server) {
         if (lateSpectators.isEmpty() || participants.size() >= MAX_PLAYERS) return;
         for (UUID id : new ArrayList<>(lateSpectators)) {
             if (participants.size() >= MAX_PLAYERS) break;
@@ -484,7 +495,7 @@ public final class IceRushGame {
         }
         lateSpectators.clear();
         occupiedSpots.clear();
-        for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.discard();
+        resetCracks();\n        for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.discard();
         playerBoats.clear();
         state = State.WAITING;
         timer = 0;
