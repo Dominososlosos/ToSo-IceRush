@@ -1,6 +1,6 @@
 # ICE RUSH
 
-ICE RUSH is being migrated from the original datapack prototype to a Fabric server mod.
+ICE RUSH is a Fabric server mod for Minecraft 1.21.1. The original datapack prototype is retained under `datapack/` as a reference and is not loaded by the mod.
 
 ## Target
 - Minecraft Java Edition 1.21.1
