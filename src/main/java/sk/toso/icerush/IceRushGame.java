@@ -1258,6 +1258,8 @@ public final class IceRushGame {
             if (boat == null || boat.isRemoved()) {
                 boat = new BoatEntity(EntityType.BOAT, arenaWorld);
                 participant.appliedSpeedScale = 1.0;
+                participant.turboTicks = 0;
+                participant.turboActive = false;
                 boat.setPosition(player.getX(), player.getY() - 0.5, player.getZ());
                 arenaWorld.spawnEntity(boat);
                 playerBoats.put(participant.id, boat);
