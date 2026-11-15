@@ -685,15 +685,17 @@ public final class IceRushGame {
         turboZones.clear();
         for (Participant participant : participants.values()) {
             participant.turboTicks = 0;
+            participant.turboActive = false;
             participant.turboZonesUsed.clear();
-        }
-        for (int i = 0; i < config.turboZones; i++) {
-            double angle = ThreadLocalRandom.current().nextDouble(Math.PI * 2.0);
-            turboZones.add(new Vec3d(arenaCenter.getX() + Math.cos(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5, arenaCenter.getY(), arenaCenter.getZ() + Math.sin(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5));
         }
         roundEvent = ThreadLocalRandom.current().nextInt(100) < config.eventChancePercent
             ? List.of("SNOW", "WIND", "SUPER_ICE", "TURBO_MADNESS", "FOG").get(ThreadLocalRandom.current().nextInt(5))
             : "NONE";
+        int zoneCount = config.turboZones * (roundEvent.equals("TURBO_MADNESS") ? 2 : 1);
+        for (int i = 0; i < zoneCount; i++) {
+            double angle = ThreadLocalRandom.current().nextDouble(Math.PI * 2.0);
+            turboZones.add(new Vec3d(arenaCenter.getX() + Math.cos(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5, arenaCenter.getY(), arenaCenter.getZ() + Math.sin(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5));
+        }
         if (!roundEvent.equals("NONE")) broadcast(server, Text.literal("NÁHODNÁ UDALOSŤ: " + roundEvent).formatted(Formatting.LIGHT_PURPLE, Formatting.BOLD));
         List<Integer> selected = new ArrayList<>();
         for (int i = 0; i < crackPositions.size(); i++) {
