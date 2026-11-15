@@ -13,7 +13,6 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.text.MutableText;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -263,30 +262,23 @@ public final class IceRushGame {
     private int showStats(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
-        MutableText message = Text.literal("ICE RUSH ŠTATISTIKY
-");
-        message.append(Text.literal("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "
-"));
-        message.append(Text.literal("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "
-"));
-        message.append(Text.literal("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "
-"));
-        message.append(Text.literal("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s")));
-        player.sendMessage(message, false);
+        player.sendMessage(Text.literal("ICE RUSH ŠTATISTIKY"), false);
+        player.sendMessage(Text.literal("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses), false);
+        player.sendMessage(Text.literal("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses), false);
+        player.sendMessage(Text.literal("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord)), false);
+        player.sendMessage(Text.literal("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s")), false);
         return 1;
     }
 
     private int showTop(ServerCommandSource source) {
-        MutableText message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV
-");
+        source.sendFeedback(() -> Text.literal("ICE RUSH — TOP 10 PODĽA BODOV"), false);
         int rank = 1;
         for (Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry : statsStore.top(10)) {
             ServerPlayerEntity online = source.getServer().getPlayerManager().getPlayer(entry.getKey());
             String name = online == null ? (entry.getValue().playerName.isBlank() ? entry.getKey().toString().substring(0, 8) : entry.getValue().playerName) : online.getName().getString();
-            message.append(Text.literal(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")
-"));
+            int place = rank++;
+            source.sendFeedback(() -> Text.literal(place + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")"), false);
         }
-        source.sendFeedback(() -> message, false);
         return 1;
     }
 
@@ -298,12 +290,12 @@ public final class IceRushGame {
     private int showAchievements(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
-        MutableText message = Text.literal("ICE RUSH — ACHIEVEMENTY
-");
-        if (stats.achievements.isEmpty()) message.append(Text.literal("Zatiaľ nemáš odomknuté achievementy."));
-        else for (String achievement : stats.achievements) message.append(Text.literal("• " + achievement + "
-"));
-        player.sendMessage(message, false);
+        player.sendMessage(Text.literal("ICE RUSH — ACHIEVEMENTY"), false);
+        if (stats.achievements.isEmpty()) {
+            player.sendMessage(Text.literal("Zatiaľ nemáš odomknuté achievementy."), false);
+        } else {
+            for (String achievement : stats.achievements) player.sendMessage(Text.literal("• " + achievement), false);
+        }
         return 1;
     }
 
