@@ -287,9 +287,10 @@ public final class IceRushGame {
         config.arenaY = arenaCenter.getY();
         config.arenaZ = arenaCenter.getZ();
         config.save();
-        for (Participant participant : participants.values()) {
-            ServerPlayerEntity player = source.getServer().getPlayerManager().getPlayer(participant.id);
-            if (player != null) teleportToLobby(player);
+        for (ServerPlayerEntity player : source.getServer().getPlayerManager().getPlayerList()) {
+            player.changeGameMode(GameMode.ADVENTURE);
+            teleportToLobby(player);
+            sendLobbyMenu(player);
         }
         admin.sendMessage(Text.literal("ICE RUSH aréna vytvorená. Priemer: " + (config.trackOuterRadius * 2.0) + " blokov, šírka približne " + (config.trackOuterRadius - config.trackInnerRadius) + "; lobby: " + config.lobbyHeight + " blokov nad dráhou.").formatted(Formatting.GREEN), false);
         tryStartCountdown(source.getServer());
@@ -443,6 +444,10 @@ public final class IceRushGame {
 
     public void onPlayerJoin(ServerPlayerEntity player) {
         if (state == State.WAITING) {
+            if (arenaWorld != null && lobbyPosition != null) {
+                player.changeGameMode(GameMode.ADVENTURE);
+                teleportToLobby(player);
+            }
             sendLobbyMenu(player);
             return;
         }
