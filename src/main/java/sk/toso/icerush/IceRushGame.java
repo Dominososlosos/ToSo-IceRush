@@ -324,7 +324,7 @@ public final class IceRushGame {
         if (disconnectedBoat != null && !disconnectedBoat.isRemoved()) disconnectedBoat.discard();
         ServerBossBar disconnectedBar = speedBars.remove(playerId);
         if (disconnectedBar != null) disconnectedBar.clearPlayers();
-        if (state == State.WAITING || state == State.COUNTDOWN) {
+        if (state == State.WAITING || (state == State.COUNTDOWN && lobbyCountdown)) {
             participants.remove(playerId);
             if (state == State.COUNTDOWN) countdownNeedsValidation = true;
         } else {
@@ -438,6 +438,7 @@ public final class IceRushGame {
     private void startRound(MinecraftServer server) {
         if (round == 0) resultsCommitted = false;
         boatsLocked = false;
+        lobbyCountdown = false;
         round++;
         for (Participant p : participants.values()) {
             p.parked = false;
@@ -527,25 +528,18 @@ public final class IceRushGame {
             }
         }
 
-        int remaining = activeCount();
-        if (remaining <= 1) {
+        if (activeCount() <= 1) {
             declareWinner(server);
-        } else {
-            for (Participant p : participants.values()) { p.parked = false; p.parkingSpot = -1; p.parkingTimeTicks = 0; }
-            admitLateSpectators(server);
-            round++;
-            state = State.RACING;
-            timer = ThreadLocalRandom.current().nextInt(config.minRideSeconds * 20, config.maxRideSeconds * 20 + 1);
-            spawnRoundBoats(server);
-            setupSpeedBars(server);
-            phaseBar.setName(Text.literal("JAZDA — KOLO " + round));
-            phaseBar.setColor(BossBar.Color.BLUE);
-            phaseBar.setPercent(1.0F);
-            addPhaseBarPlayers(server);
-            roundTicks = 0;
-            prepareRoundModifiers(server);
-            broadcast(server, Text.literal("Kolo " + round + " začína! Zostáva hráčov: " + activeCount()).formatted(Formatting.AQUA, Formatting.BOLD));
+            return;
         }
+
+        for (Participant participant : participants.values()) {
+            participant.parked = false;
+            participant.parkingSpot = -1;
+            participant.parkingTimeTicks = 0;
+        }
+        admitLateSpectators(server);
+        beginNextRoundCountdown(server);
     }
 
     private void addPhaseBarPlayers(MinecraftServer server) {
