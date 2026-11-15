@@ -19,6 +19,9 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.ClickEvent;
+import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
+import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
+import net.minecraft.network.packet.s2c.play.TitleFadeS2CPacket;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -730,6 +733,7 @@ public final class IceRushGame {
                         arenaWorld.spawnParticles(ParticleTypes.CLOUD, player.getX(), player.getY() + 0.5, player.getZ(), 24, 0.5, 0.4, 0.5, 0.03);
                         arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0F, 0.7F);
                     }
+                    sendTitle(player, "VYPADÁVAŠ!", "Nenašiel si parkovacie miesto.");
                     player.changeGameMode(GameMode.SPECTATOR);
                     player.sendMessage(Text.literal("VYPADÁVAŠ! Nenašiel/nenašla si parkovacie miesto. Body: " + participant.points).formatted(Formatting.RED, Formatting.BOLD), false);
                 }
@@ -906,6 +910,7 @@ public final class IceRushGame {
                     arenaWorld.spawnParticles(ParticleTypes.CLOUD, player.getX(), player.getY() + 0.5, player.getZ(), 24, 0.5, 0.4, 0.5, 0.03);
                     arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0F, 0.7F);
                 }
+                sendTitle(player, "VYPADÁVAŠ!", "Prepadol si sa cez prasknutý ľad.");
                 player.changeGameMode(GameMode.SPECTATOR);
                 player.sendMessage(Text.literal("VYPADÁVAŠ! Prepadol si sa cez prasknutý ľad. Body: " + participant.points).formatted(Formatting.RED, Formatting.BOLD), false);
             }
@@ -1044,6 +1049,7 @@ public final class IceRushGame {
             Participant winnerParticipant = participants.get(winner);
             if (winnerParticipant != null) winnerParticipant.points += 100;
             if (player != null) {
+                sendTitle(player, "VÍŤAZ!", "Vyhrávaš ICE RUSH!");
                 if (arenaWorld != null) {
                     arenaWorld.spawnParticles(ParticleTypes.FIREWORK, player.getX(), player.getY() + 1.0, player.getZ(), 100, 1.2, 1.0, 1.2, 0.12);
                     arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 1.5F, 0.8F);
@@ -1054,6 +1060,12 @@ public final class IceRushGame {
             broadcast(server, Text.literal("ICE RUSH sa skončilo bez víťaza.").formatted(Formatting.RED));
         }
         commitResults(server);
+    }
+
+    private void sendTitle(ServerPlayerEntity player, String title, String subtitle) {
+        player.networkHandler.sendPacket(new TitleFadeS2CPacket(10, 60, 20));
+        player.networkHandler.sendPacket(new TitleS2CPacket(Text.literal(title)));
+        player.networkHandler.sendPacket(new SubtitleS2CPacket(Text.literal(subtitle)));
     }
 
     private void commitResults(MinecraftServer server) {
