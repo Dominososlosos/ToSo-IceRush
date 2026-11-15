@@ -296,6 +296,10 @@ public final class IceRushGame {
                 if (Math.abs(x) == 8 || Math.abs(z) == 8) {
                     arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 1, cz + z), Blocks.SPRUCE_FENCE.getDefaultState());
                 }
+                if (Math.abs(x) == 7 && Math.abs(z) == 7) {
+                    arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 1, cz + z), Blocks.SEA_LANTERN.getDefaultState());
+                    arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 2, cz + z), Blocks.BLUE_ICE.getDefaultState());
+                }
             }
         }
         initializeArenaPositions();
