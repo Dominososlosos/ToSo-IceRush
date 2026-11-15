@@ -18,7 +18,7 @@ final class IceRushConfig {
     int parkingSeconds = 20;
     int finishHoldSeconds = 8;
     int lobbyHeight = 80;
-    double trackInnerRadius = 38.5;
+    double trackInnerRadius = 38.0;
     double trackOuterRadius = 45.0;
     int turboZones = 6;
     int turboDurationSeconds = 2;
