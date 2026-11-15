@@ -1003,6 +1003,11 @@ public final class IceRushGame {
     private void updateLobbyLeaderboard(MinecraftServer server) {
         if (arenaWorld == null || arenaCenter == null) return;
         int lobbyY = arenaCenter.getY() - 1 + config.arenaLobbyHeight;
+        Vec3d boardCenter = new Vec3d(arenaCenter.getX() + 7.0, lobbyY + 3.0, arenaCenter.getZ());
+        boolean lobbyAreaLoaded = server.getPlayerManager().getPlayerList().stream()
+            .anyMatch(player -> player.getServerWorld() == arenaWorld
+                && player.getPos().squaredDistanceTo(boardCenter) < 128.0 * 128.0);
+        if (!lobbyAreaLoaded) return;
         if (!lobbyBoardBuilt) {
             for (int dy = 1; dy <= 7; dy++) {
                 for (int dz = -5; dz <= 5; dz++) {
