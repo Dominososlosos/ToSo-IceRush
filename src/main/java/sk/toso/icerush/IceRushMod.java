@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.entity.decoration.InteractionEntity;
 import net.minecraft.util.ActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +25,9 @@ public final class IceRushMod implements ModInitializer {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> game.onPlayerJoin(handler.player));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> game.onPlayerDisconnect(handler.player.getUuid(), server));
         UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            // Command tags are server-side data, so the client identifies the button by entity type.
+            if (world.isClient) return entity instanceof InteractionEntity ? ActionResult.SUCCESS : ActionResult.PASS;
             if (!game.isLobbyButton(entity)) return ActionResult.PASS;
-            if (world.isClient) return ActionResult.SUCCESS;
             if (player instanceof ServerPlayerEntity serverPlayer) game.handleLobbyButton(serverPlayer, entity);
             return ActionResult.SUCCESS;
         });
