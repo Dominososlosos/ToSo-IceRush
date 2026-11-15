@@ -391,7 +391,9 @@ public final class IceRushGame {
                     arenaCenter.getX() + 10, lobbyPosition.y + 5, arenaCenter.getZ() + 10),
             entity -> entity.getCommandTags().contains("icerush_button_join")).size();
         buildLobbyControls();
-        source.sendFeedback(() -> Text.literal(before > 0 ? "Lobby ovládanie je už vytvorené a bolo skontrolované." : "Lobby ovládacie panely boli vytvorené."), true);
+        lobbyBoardBuilt = false;
+        updateLobbyLeaderboard(source.getServer());
+        source.sendFeedback(() -> Text.literal(before > 0 ? "Lobby ovládanie a výsledková tabuľa boli skontrolované." : "Lobby ovládacie panely a výsledková tabuľa boli vytvorené."), true);
         return 1;
     }
 
