@@ -291,9 +291,17 @@ public final class IceRushGame {
         }
         arenaWorld = savedWorld;
         arenaCenter = new BlockPos(config.arenaX, config.arenaY, config.arenaZ);
-        lobbyPosition = new Vec3d(config.arenaX + 0.5, config.arenaY + config.lobbyHeight, config.arenaZ + 0.5);
+        lobbyPosition = new Vec3d(config.arenaX + 0.5, config.arenaY + config.arenaLobbyHeight, config.arenaZ + 0.5);
         initializeArenaPositions();
         IceRushMod.LOGGER.info("Restored ICE RUSH arena at {} {} {} in {}", config.arenaX, config.arenaY, config.arenaZ, config.arenaDimension);
+    }
+
+    private double arenaInnerRadius() {
+        return config.arenaConfigured ? config.arenaInnerRadius : config.trackInnerRadius;
+    }
+
+    private double arenaOuterRadius() {
+        return config.arenaConfigured ? config.arenaOuterRadius : config.trackOuterRadius;
     }
 
     private void initializeArenaPositions() {
@@ -303,7 +311,7 @@ public final class IceRushGame {
         startPositions.clear();
         parkingSpots.clear();
         crackPositions.clear();
-        double trackRadius = (config.trackInnerRadius + config.trackOuterRadius) / 2.0;
+        double trackRadius = (arenaInnerRadius() + arenaOuterRadius()) / 2.0;
         for (int i = 0; i < 8; i++) {
             double angle = (Math.PI * 2.0 * i) / 8.0;
             crackPositions.add(new BlockPos((int) Math.round(cx + Math.cos(angle) * trackRadius), cy, (int) Math.round(cz + Math.sin(angle) * trackRadius)));
@@ -774,7 +782,7 @@ public final class IceRushGame {
         int zoneCount = config.turboZones * (roundEvent.equals("TURBO_MADNESS") ? 2 : 1);
         for (int i = 0; i < zoneCount; i++) {
             double angle = ThreadLocalRandom.current().nextDouble(Math.PI * 2.0);
-            turboZones.add(new Vec3d(arenaCenter.getX() + Math.cos(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5, arenaCenter.getY(), arenaCenter.getZ() + Math.sin(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5));
+            turboZones.add(new Vec3d(arenaCenter.getX() + Math.cos(angle) * ((arenaInnerRadius() + arenaOuterRadius()) / 2.0) + 0.5, arenaCenter.getY(), arenaCenter.getZ() + Math.sin(angle) * ((arenaInnerRadius() + arenaOuterRadius()) / 2.0) + 0.5));
         }
         if (!roundEvent.equals("NONE")) {
             String eventName = switch (roundEvent) {
