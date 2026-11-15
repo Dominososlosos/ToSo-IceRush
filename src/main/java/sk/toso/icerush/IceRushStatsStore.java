@@ -89,7 +89,10 @@ final class IceRushStatsStore {
             if (loaded != null) {
                 loaded.forEach((id, stats) -> {
                     try {
-                        data.put(UUID.fromString(id), stats == null ? new PlayerStats() : stats);
+                        PlayerStats safeStats = stats == null ? new PlayerStats() : stats;
+                        if (safeStats.achievements == null) safeStats.achievements = new java.util.ArrayList<>();
+                        if (safeStats.playerName == null) safeStats.playerName = "";
+                        data.put(UUID.fromString(id), safeStats);
                     } catch (IllegalArgumentException ignored) {
                         IceRushMod.LOGGER.warn("Ignoring invalid player UUID in ICE RUSH statistics: {}", id);
                     }
