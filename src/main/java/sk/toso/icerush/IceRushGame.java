@@ -274,7 +274,7 @@ public final class IceRushGame {
             ServerPlayerEntity player = source.getServer().getPlayerManager().getPlayer(participant.id);
             if (player != null) teleportToLobby(player);
         }
-        admin.sendMessage(Text.literal("ICE RUSH aréna vytvorená. Dráha: priemer 90, šírka 7; lobby je 80 blokov nad ňou.").formatted(Formatting.GREEN), false);
+        admin.sendMessage(Text.literal("ICE RUSH aréna vytvorená. Priemer: " + (config.trackOuterRadius * 2.0) + " blokov, šírka približne " + (config.trackOuterRadius - config.trackInnerRadius) + "; lobby: " + config.lobbyHeight + " blokov nad dráhou.").formatted(Formatting.GREEN), false);
         tryStartCountdown(source.getServer());
         return 1;
     }
