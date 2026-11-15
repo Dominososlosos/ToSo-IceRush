@@ -3,6 +3,8 @@ package sk.toso.icerush;
 import com.mojang.brigadier.CommandDispatcher;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.boss.BossBar;
+import net.minecraft.entity.boss.ServerBossBar;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.server.MinecraftServer;
@@ -47,6 +49,7 @@ public final class IceRushGame {
     private final Set<Integer> occupiedSpots = new HashSet<>();
     private final Set<UUID> lateSpectators = new HashSet<>();
     private final Map<UUID, BoatEntity> playerBoats = new LinkedHashMap<>();
+    private final Map<UUID, ServerBossBar> speedBars = new LinkedHashMap<>();
     private final List<Vec3d> startPositions = new ArrayList<>();
     private final List<Vec3d> turboZones = new ArrayList<>();
     private final List<BlockPos> crackPositions = new ArrayList<>();
@@ -59,6 +62,7 @@ public final class IceRushGame {
     private State state = State.WAITING;
     private int timer;
     private int round;
+    private int roundTicks;
     private UUID winner;
 
     private static final class Participant {
@@ -421,7 +425,7 @@ public final class IceRushGame {
         }
     }
 
-    private void prepareRoundModifiers(MinecraftServer server) {
+    private void setupSpeedBars(MinecraftServer server) {\n        clearSpeedBars();\n        for (Participant participant : participants.values()) {\n            if (participant.eliminated) continue;\n            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);\n            if (player == null) continue;\n            ServerBossBar bar = new ServerBossBar(Text.literal("RÝCHLOSŤ — OCHRANA ŠTARTU"), BossBar.Color.YELLOW, BossBar.Style.PROGRESS);\n            bar.setPercent(0.5F);\n            bar.addPlayer(player);\n            speedBars.put(participant.id, bar);\n        }\n    }\n\n    private void clearSpeedBars() {\n        for (ServerBossBar bar : speedBars.values()) bar.clearPlayers();\n        speedBars.clear();\n    }\n\n    private void updateSpeedBars(MinecraftServer server) {\n        if (roundTicks < 100 || server.getTicks() % 5 != 0) return; // prvých 5 sekúnd sa rýchlosť nevyhodnocuje\n        for (Participant participant : participants.values()) {\n            if (participant.eliminated) continue;\n            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);\n            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;\n            double speed = boat.getVelocity().horizontalLength();\n            ServerBossBar bar = speedBars.get(participant.id);\n            if (bar == null) continue;\n            if (speed >= 0.18) {\n                bar.setColor(BossBar.Color.GREEN);\n                bar.setName(Text.literal("RÝCHLOSŤ — RÝCHLA"));\n            } else if (speed >= 0.10) {\n                bar.setColor(BossBar.Color.YELLOW);\n                bar.setName(Text.literal("RÝCHLOSŤ — STREDNÁ"));\n            } else {\n                bar.setColor(BossBar.Color.RED);\n                bar.setName(Text.literal("RÝCHLOSŤ — POMALÁ"));\n            }\n            bar.setPercent((float) Math.max(0.0, Math.min(1.0, speed / 0.30)));\n        }\n    }\n\n    private void prepareRoundModifiers(MinecraftServer server) {
         resetCracks();
         turboZones.clear();
         for (Participant participant : participants.values()) {
