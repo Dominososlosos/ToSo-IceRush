@@ -563,7 +563,7 @@ public final class IceRushGame {
                     continue;
                 }
                 if (participant.turboZonesUsed.contains(i)) continue;
-                if (velocity.horizontalLength() < 0.12) continue; // bonus iba pri zelenej (rýchlej) jazde
+                if (velocity.horizontalLength() < 0.18) continue; // bonus iba pri zelenej (rýchlej) jazde
                 participant.turboZonesUsed.add(i);
                 participant.turboTicks = 40; // 2 sekundy; ďalší zásah obnoví čas, bonus sa nesčítava
                 participant.turboBonuses++;
