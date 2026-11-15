@@ -1479,15 +1479,13 @@ public final class IceRushGame {
     }
 
     private void resetGame(MinecraftServer server, boolean adminReset) {
-        for (Participant participant : participants.values()) {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
-            if (player != null) returnToLobby(player);
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            returnToLobby(player);
+            player.sendMessage(Text.literal(adminReset
+                ? "ICE RUSH bolo resetované administrátorom. Výsledky tohto zápasu sa neuložili."
+                : "ICE RUSH sa skončilo. Lobby je znovu otvorené.").formatted(Formatting.AQUA), false);
         }
         participants.clear();
-        for (UUID id : lateSpectators) {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
-            if (player != null) returnToLobby(player);
-        }
         lateSpectators.clear();
         occupiedSpots.clear();
         clearSpeedBars();
@@ -1504,7 +1502,6 @@ public final class IceRushGame {
         resultsCommitted = false;
         winner = null;
         celebrationTicks = 0;
-        if (!adminReset) broadcast(server, Text.literal("ICE RUSH sa skončilo. Lobby je znovu otvorené.").formatted(Formatting.AQUA));
     }
 
     private void teleportToLobby(ServerPlayerEntity player) {
