@@ -589,6 +589,13 @@ public final class IceRushGame {
         } else {
             Participant participant = participants.get(playerId);
             if (participant != null && !participant.eliminated) {
+                if (participant.parked && !participant.parkingRewarded) {
+                    participant.points += 10;
+                    participant.parkingRewarded = true;
+                    occupiedSpots.remove(participant.parkingSpot);
+                    participant.parked = false;
+                    participant.parkingSpot = -1;
+                }
                 int placeBeforeDisconnect = activeCount();
                 if (placeBeforeDisconnect == 2) participant.points += 60;
                 else if (placeBeforeDisconnect == 3) participant.points += 40;
@@ -847,7 +854,7 @@ public final class IceRushGame {
                 if (boatPosition.squaredDistanceTo(parkingSpots.get(i)) <= config.parkingRadius * config.parkingRadius) {
                     participant.parked = true;
                     participant.parkingSpot = i;
-                    participant.parkingTimeTicks = config.parkingSeconds * 20 - timer;
+                    participant.parkingTimeTicks = Math.max(1, config.parkingSeconds * 20 - timer);
                     occupiedSpots.add(i);
                     player.sendMessage(Text.literal("Parkovacie miesto obsadené!").formatted(Formatting.GREEN), true);
                     break;
@@ -1228,6 +1235,7 @@ public final class IceRushGame {
             BoatEntity boat = playerBoats.get(participant.id);
             if (boat == null || boat.isRemoved()) {
                 boat = new BoatEntity(EntityType.BOAT, arenaWorld);
+                participant.appliedSpeedScale = 1.0;
                 boat.setPosition(pos);
                 arenaWorld.spawnEntity(boat);
                 playerBoats.put(participant.id, boat);
@@ -1249,6 +1257,7 @@ public final class IceRushGame {
             BoatEntity boat = playerBoats.get(participant.id);
             if (boat == null || boat.isRemoved()) {
                 boat = new BoatEntity(EntityType.BOAT, arenaWorld);
+                participant.appliedSpeedScale = 1.0;
                 boat.setPosition(player.getX(), player.getY() - 0.5, player.getZ());
                 arenaWorld.spawnEntity(boat);
                 playerBoats.put(participant.id, boat);
