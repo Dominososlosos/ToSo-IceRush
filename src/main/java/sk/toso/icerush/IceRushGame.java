@@ -90,6 +90,7 @@ public final class IceRushGame {
         private boolean ready;
         private boolean eliminated;
         private boolean parked;
+        private boolean parkingRewarded;
         private int parkingSpot = -1;
         private int points;
         private int turboTicks;
@@ -699,12 +700,13 @@ public final class IceRushGame {
             if (server.getTicks() % 20 == 0) updateHud(server);
             enforceBoatSeats(server);
             tickCracks(server);
+            tickParkingVisuals(server);
+            updateParking(server);
             if (activeCount() <= 1) {
+                awardSurvivingParkingRewards(server);
                 declareWinner(server);
                 return;
             }
-            tickParkingVisuals(server);
-            updateParking(server);
             timer--;
             int requiredSpots = Math.max(0, activeCount() - 1);
             if (occupiedSpots.size() >= requiredSpots || timer <= 0) finishParking(server);
@@ -765,7 +767,7 @@ public final class IceRushGame {
         state = State.PARKING;
         timer = config.parkingSeconds * 20;
         occupiedSpots.clear();
-        for (Participant p : participants.values()) { p.parked = false; p.parkingSpot = -1; }
+        for (Participant p : participants.values()) { p.parked = false; p.parkingRewarded = false; p.parkingSpot = -1; }
         broadcast(server, Text.literal("PARKOVANIE! Máš 20 sekúnd na obsadenie miesta.").formatted(Formatting.GOLD, Formatting.BOLD));
     }
 
@@ -846,15 +848,33 @@ public final class IceRushGame {
         }
     }
 
+    private void awardSurvivingParkingRewards(MinecraftServer server) {
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated || !participant.parked || participant.parkingRewarded) continue;
+            participant.points += 15;
+            participant.roundsSurvived++;
+            participant.parkingRewarded = true;
+            if (participant.parkingTimeTicks > 0 &&
+                (participant.bestParkingTicks == 0 || participant.parkingTimeTicks < participant.bestParkingTicks)) {
+                participant.bestParkingTicks = participant.parkingTimeTicks;
+            }
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player != null) player.sendMessage(Text.literal("+10 parkovanie +5 prežitie kola. Spolu: " + participant.points).formatted(Formatting.GREEN), false);
+        }
+    }
+
     private void finishParking(MinecraftServer server) {
         hideParkingPads();
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (participant.parked) {
-                participant.points += 10;
-                participant.points += 5;
-                participant.roundsSurvived++;
+                if (!participant.parkingRewarded) {
+                    participant.points += 10;
+                    participant.points += 5;
+                    participant.roundsSurvived++;
+                    participant.parkingRewarded = true;
+                }
                 if (participant.parkingTimeTicks > 0 &&
                     (participant.bestParkingTicks == 0 || participant.parkingTimeTicks < participant.bestParkingTicks)) {
                     participant.bestParkingTicks = participant.parkingTimeTicks;
