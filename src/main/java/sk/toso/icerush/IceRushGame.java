@@ -325,6 +325,11 @@ public final class IceRushGame {
         }
         if (state == State.RACING) {
             enforceBoatSeats(server);
+            roundTicks++;
+            updateSpeedBars(server);
+            tickTurbo(server);
+            tickCracks(server);
+            applyRoundEvent(server);
             timer--;
             if (timer <= 0) beginParking(server);
             return;
@@ -355,10 +360,14 @@ public final class IceRushGame {
         state = State.RACING;
         timer = ThreadLocalRandom.current().nextInt(MIN_RIDE_TICKS, MAX_RIDE_TICKS + 1);
         spawnRoundBoats(server);
+        setupSpeedBars(server);
+        roundTicks = 0;
+        prepareRoundModifiers(server);
         broadcast(server, Text.literal("ŠTART! Kolo " + round + " — jazda!").formatted(Formatting.GREEN, Formatting.BOLD));
     }
 
     private void beginParking(MinecraftServer server) {
+        clearSpeedBars();
         Collections.shuffle(parkingSpots);
         state = State.PARKING;
         timer = PARKING_TICKS;
@@ -421,6 +430,9 @@ public final class IceRushGame {
             state = State.RACING;
             timer = ThreadLocalRandom.current().nextInt(MIN_RIDE_TICKS, MAX_RIDE_TICKS + 1);
             spawnRoundBoats(server);
+            setupSpeedBars(server);
+            roundTicks = 0;
+            prepareRoundModifiers(server);
             broadcast(server, Text.literal("Kolo " + (round + 1) + " začína! Zostáva hráčov: " + activeCount()).formatted(Formatting.AQUA, Formatting.BOLD));
         }
     }
@@ -625,6 +637,7 @@ public final class IceRushGame {
     }
 
     private void declareWinner(MinecraftServer server) {
+        clearSpeedBars();
         winner = participants.values().stream().filter(p -> !p.eliminated).map(p -> p.id).findFirst().orElse(null);
         state = State.FINISHED;
         timer = FINISH_HOLD_TICKS;
