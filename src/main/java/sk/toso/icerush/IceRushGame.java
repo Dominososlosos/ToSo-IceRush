@@ -768,6 +768,9 @@ public final class IceRushGame {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player != null && player.getVehicle() instanceof BoatEntity boat && boat.getY() < arenaCenter.getY() - 2) {
+                int placeBeforeElimination = activeCount();
+                if (placeBeforeElimination == 2) participant.points += 60;
+                else if (placeBeforeElimination == 3) participant.points += 40;
                 participant.eliminated = true;
                 player.stopRiding();
                 BoatEntity eliminatedBoat = playerBoats.remove(participant.id);
@@ -780,7 +783,7 @@ public final class IceRushGame {
                     arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0F, 0.7F);
                 }
                 player.changeGameMode(GameMode.SPECTATOR);
-                player.sendMessage(Text.literal("VYPADÁVAŠ! Prepadol si sa cez prasknutý ľad.").formatted(Formatting.RED, Formatting.BOLD), false);
+                player.sendMessage(Text.literal("VYPADÁVAŠ! Prepadol si sa cez prasknutý ľad. Body: " + participant.points).formatted(Formatting.RED, Formatting.BOLD), false);
             }
         }
     }
