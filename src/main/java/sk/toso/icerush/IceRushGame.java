@@ -273,7 +273,7 @@ public final class IceRushGame {
         int rank = 1;
         for (Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry : statsStore.top(10)) {
             ServerPlayerEntity online = source.getServer().getPlayerManager().getPlayer(entry.getKey());
-            String name = online == null ? entry.getKey().toString().substring(0, 8) : online.getName().getString();
+            String name = online == null ? (entry.getValue().playerName.isBlank() ? entry.getKey().toString().substring(0, 8) : entry.getValue().playerName) : online.getName().getString();
             message.append(Text.literal(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")\n"));
         }
         source.sendFeedback(() -> message, false);
