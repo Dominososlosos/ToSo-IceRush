@@ -22,7 +22,7 @@ public final class IceRushMod implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(game::tick);
         ServerLifecycleEvents.SERVER_STARTED.register(game::onServerStarted);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> game.onPlayerJoin(handler.player));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> game.onPlayerDisconnect(handler.player.getUuid()));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> game.onPlayerDisconnect(handler.player.getUuid(), server));
         UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
             if (!game.isLobbyButton(entity)) return ActionResult.PASS;
             if (world.isClient) return ActionResult.SUCCESS;
