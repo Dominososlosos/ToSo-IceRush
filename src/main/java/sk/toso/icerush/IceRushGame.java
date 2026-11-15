@@ -230,11 +230,18 @@ public final class IceRushGame {
         int cy = arenaCenter.getY() - 1;
         int cz = arenaCenter.getZ();
         // Jednorazová kruhová dráha: vonkajší priemer 90 blokov, šírka 7 blokov.
-        for (int x = -45; x <= 45; x++) {
-            for (int z = -45; z <= 45; z++) {
+        for (int x = -((int) Math.ceil(config.trackOuterRadius)); x <= (int) Math.ceil(config.trackOuterRadius); x++) {
+            for (int z = -((int) Math.ceil(config.trackOuterRadius)); z <= (int) Math.ceil(config.trackOuterRadius); z++) {
                 double radius = Math.sqrt((double) x * x + (double) z * z);
-                if (radius >= config.trackInnerRadius && radius <= config.trackOuterRadius) {
-                    arenaWorld.setBlockState(new BlockPos(cx + x, cy, cz + z), Blocks.BLUE_ICE.getDefaultState());
+                if (radius > config.trackOuterRadius) continue;
+                for (int y = cy + 1; y <= cy + 6; y++) {
+                    arenaWorld.setBlockState(new BlockPos(cx + x, y, cz + z), Blocks.AIR.getDefaultState());
+                }
+                BlockPos floor = new BlockPos(cx + x, cy, cz + z);
+                if (radius >= config.trackInnerRadius) {
+                    arenaWorld.setBlockState(floor, Blocks.BLUE_ICE.getDefaultState());
+                } else {
+                    arenaWorld.setBlockState(floor, Blocks.AIR.getDefaultState());
                 }
             }
         }
@@ -244,6 +251,9 @@ public final class IceRushGame {
         for (int x = -8; x <= 8; x++) {
             for (int z = -8; z <= 8; z++) {
                 arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY, cz + z), Blocks.SPRUCE_PLANKS.getDefaultState());
+                if (Math.abs(x) == 8 || Math.abs(z) == 8) {
+                    arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 1, cz + z), Blocks.SPRUCE_FENCE.getDefaultState());
+                }
             }
         }
         startPositions.clear();
