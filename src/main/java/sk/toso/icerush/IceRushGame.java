@@ -362,10 +362,10 @@ public final class IceRushGame {
 
     private int showRules(ServerCommandSource source) {
         source.sendFeedback(() -> Text.literal("ICE RUSH — PRAVIDLÁ"), false);
-        source.sendFeedback(() -> Text.literal("2–16 hráčov. Po 80 % READY nasleduje odpočet 3–2–1–ŠTART."), false);
+        source.sendFeedback(() -> Text.literal(config.minPlayers + "–" + config.maxPlayers + " hráčov. Po 80 % READY nasleduje odpočet 3–2–1–ŠTART."), false);
         source.sendFeedback(() -> Text.literal("Počas jazdy zostaň v loďke. Rýchlostné zóny, turbo a trhliny menia priebeh kola."), false);
-        source.sendFeedback(() -> Text.literal("Po 25–40 sekundách príde parkovanie. Miest je o jedno menej než aktívnych hráčov."), false);
-        source.sendFeedback(() -> Text.literal("Zaparkovanie: +10 bodov, prežitie kola: +5, turbo: +2, 2. miesto: +60, 3. miesto: +40, výhra: +100."), false);
+        source.sendFeedback(() -> Text.literal("Jazda trvá " + config.minRideSeconds + "–" + config.maxRideSeconds + " sekúnd. Parkovanie trvá " + config.parkingSeconds + " sekúnd; miest je o jedno menej než aktívnych hráčov."), false);
+        source.sendFeedback(() -> Text.literal("Zaparkovanie: +10 bodov, prežitie kola: +5, turbo: +" + config.turboBonusPoints + ", 2. miesto: +60, 3. miesto: +40, výhra: +100."), false);
         source.sendFeedback(() -> Text.literal("Vyhráva posledný zostávajúci hráč. Príkazy: /icerush join, /icerush ready, /icerush stats, /icerush top."), false);
         return 1;
     }
