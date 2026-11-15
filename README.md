@@ -32,6 +32,7 @@ The mod JAR is created in `build/libs/`.
 - `/icerush clearspots` — admin: remove configured parking locations
 - `/icerush defaultspots` — admin: restore the generated parking positions
 - `/icerush setup` — admin: generate the 90-block circular Blue Ice track and elevated lobby platform
+- `/icerush lobbysetup` — admin: create or repair the physical lobby controls
 - `/icerush reset` — admin reset
 
 ## Current implementation milestone
