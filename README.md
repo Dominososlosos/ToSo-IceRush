@@ -26,6 +26,7 @@ The mod JAR is created in `build/libs/`.
 - `/icerush top` — show the TOP 10 leaderboard
 - `/icerush achievements` — show unlocked achievements
 - `/icerush lastwinner` — show the last completed game's winner
+- `/icerush rules` — display the game rules
 - `/icerush start` — admin start (requires 80% ready)
 - `/icerush addspot` — admin: save a parking location at your current position
 - `/icerush clearspots` — admin: remove configured parking locations
@@ -33,11 +34,11 @@ The mod JAR is created in `build/libs/`.
 - `/icerush reset` — admin reset
 
 ## Current implementation milestone
-The Fabric server mod currently includes the lobby commands, one-time READY votes, the 80% threshold, countdown cancellation when the roster changes, a generated circular arena and elevated lobby, boat spawning and seat enforcement, per-player speed BossBars with a five-second grace period, six turbo zones, 5% random round events, eight crack positions with warnings, a 25–40 second ride phase, a 3–2–1 countdown before every round, dynamic parking count, temporary visible parking pads with snow particles, 20-second parking, elimination effects, winner celebration particles/sound, and survival rounds. Arena setup generates parking positions automatically; `/icerush addspot` can add manual positions. Gameplay settings are generated in `config/icerush.json`; completed-game statistics are stored in `config/icerush-stats.json`, and the last winner is stored in `config/icerush-last-winner.txt`; both survive server restarts.
+The Fabric server mod currently includes the lobby commands, one-time READY votes, the 80% threshold, countdown cancellation when the roster changes, a generated circular arena and elevated lobby, boat spawning and seat enforcement, per-player speed BossBars with a five-second grace period, six turbo zones by default (twelve during Turbo Madness), 5% random round events, eight crack positions with warnings, a 25–40 second ride phase, a 3–2–1 countdown before every round, dynamic parking count, temporary visible parking pads with snow particles, 20-second parking, elimination effects, winner celebration particles/sound, and survival rounds. Arena setup generates parking positions automatically; `/icerush addspot` can add manual positions. Gameplay settings are generated in `config/icerush.json`; completed-game statistics are stored in `config/icerush-stats.json`, and the last winner is stored in `config/icerush-last-winner.txt`; both survive server restarts.
 
 ## Setup
 1. Run `/icerush setup` while standing at the intended arena center. This builds the Blue Ice ring and a raised lobby platform.
-2. The arena setup creates 16 candidate parking positions automatically. If you want custom positions, clear them with `/icerush clearspots` and add your own using `/icerush addspot`.
+2. The arena setup creates up to the configured maximum number of candidate parking positions automatically. If you want custom positions, clear them with `/icerush clearspots` and add your own using `/icerush addspot`.
 3. Players run `/icerush join`, then `/icerush ready`. The game starts after at least 80% have voted READY and enough parking positions exist.
 4. Admins can inspect the state with `/icerush status` and stop/reset with `/icerush reset`.
 
