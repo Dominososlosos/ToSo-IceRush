@@ -405,26 +405,34 @@ public final class IceRushGame {
             arenaCenter.getX() + 10, lobbyY + 5, arenaCenter.getZ() + 9);
         for (int i = 0; i < actions.length; i++) {
             String tag = "icerush_button_" + actions[i];
-            boolean exists = !arenaWorld.getEntitiesByClass(InteractionEntity.class, searchBox,
-                entity -> entity.getCommandTags().contains(tag)).isEmpty();
-            if (exists) continue;
+            String labelTag = "icerush_lobby_label_" + actions[i];
             int x = arenaCenter.getX() - 5 + i * 2;
             int z = arenaCenter.getZ() + 5;
             BlockPos pad = new BlockPos(x, lobbyY, z);
             arenaWorld.setBlockState(pad, colors[i].getDefaultState());
-            InteractionEntity button = new InteractionEntity(EntityType.INTERACTION, arenaWorld);
-            button.setPosition(x + 0.5, lobbyY + 1.0, z + 0.5);
-            button.setNoGravity(true);
-            button.addCommandTag(tag);
-            arenaWorld.spawnEntity(button);
-            ArmorStandEntity label = new ArmorStandEntity(EntityType.ARMOR_STAND, arenaWorld);
-            label.setPosition(x + 0.5, lobbyY + 1.35, z + 0.5);
-            label.setCustomName(Text.literal(labels[i]).formatted(Formatting.BOLD, Formatting.WHITE));
-            label.setCustomNameVisible(true);
-            label.setInvisible(true);
-            label.setNoGravity(true);
-            label.addCommandTag("icerush_lobby_label_" + actions[i]);
-            arenaWorld.spawnEntity(label);
+
+            boolean buttonExists = !arenaWorld.getEntitiesByClass(InteractionEntity.class, searchBox,
+                entity -> entity.getCommandTags().contains(tag)).isEmpty();
+            if (!buttonExists) {
+                InteractionEntity button = new InteractionEntity(EntityType.INTERACTION, arenaWorld);
+                button.setPosition(x + 0.5, lobbyY + 1.0, z + 0.5);
+                button.setNoGravity(true);
+                button.addCommandTag(tag);
+                arenaWorld.spawnEntity(button);
+            }
+
+            boolean labelExists = !arenaWorld.getEntitiesByClass(ArmorStandEntity.class, searchBox,
+                entity -> entity.getCommandTags().contains(labelTag)).isEmpty();
+            if (!labelExists) {
+                ArmorStandEntity label = new ArmorStandEntity(EntityType.ARMOR_STAND, arenaWorld);
+                label.setPosition(x + 0.5, lobbyY + 1.35, z + 0.5);
+                label.setCustomName(Text.literal(labels[i]).formatted(Formatting.BOLD, Formatting.WHITE));
+                label.setCustomNameVisible(true);
+                label.setInvisible(true);
+                label.setNoGravity(true);
+                label.addCommandTag(labelTag);
+                arenaWorld.spawnEntity(label);
+            }
         }
     }
 
