@@ -352,7 +352,7 @@ public final class IceRushGame {
     }
 
     private int clearSpots(ServerCommandSource source) {
-        if (state != State.WAITING) {
+        if (state != State.WAITING || arenaWorld == null) {
             source.sendError(Text.literal("Parkovacie miesta možno meniť iba v lobby."));
             return 0;
         }
