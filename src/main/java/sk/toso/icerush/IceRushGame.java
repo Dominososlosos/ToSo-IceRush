@@ -429,7 +429,7 @@ public final class IceRushGame {
                 entity -> entity.getCommandTags().contains(labelTag)).isEmpty();
             if (!labelExists) {
                 ArmorStandEntity label = new ArmorStandEntity(EntityType.ARMOR_STAND, arenaWorld);
-                label.setPosition(x + 0.5, lobbyY + 1.35, z + 0.5);
+                label.setPosition(x + 0.5, lobbyY + 1.35, z + 2.0);
                 label.setCustomName(Text.literal(labels[i]).formatted(Formatting.BOLD, Formatting.WHITE));
                 label.setCustomNameVisible(true);
                 label.setInvisible(true);
