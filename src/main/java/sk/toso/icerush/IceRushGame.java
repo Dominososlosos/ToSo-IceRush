@@ -62,6 +62,9 @@ public final class IceRushGame {
     private final Set<BlockPos> openCracks = new HashSet<>();
     private final Map<BlockPos, Integer> warningCracks = new LinkedHashMap<>();
     private final Map<BlockPos, BlockState> parkingOriginalStates = new LinkedHashMap<>();
+    private final List<BlockPos> parkingAnimationBlocks = new ArrayList<>();
+    private int parkingAnimationIndex;
+    private int celebrationTicks;
     private String roundEvent = "NONE";
     private ServerWorld arenaWorld;
     private BlockPos arenaCenter;
@@ -88,6 +91,8 @@ public final class IceRushGame {
         private int turboBonuses;
         private int parkingTimeTicks;
         private int bestParkingTicks;
+        private int roundsSurvived;
+        private double appliedSpeedScale = 1.0;
         private double speedRecord;
         private int speedPercent = 100;
         private final Set<Integer> turboZonesUsed = new HashSet<>();
@@ -387,6 +392,7 @@ public final class IceRushGame {
         player.sendMessage(Text.literal("ICE RUSH ŠTATISTIKY"), false);
         player.sendMessage(Text.literal("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses), false);
         player.sendMessage(Text.literal("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses), false);
+        player.sendMessage(Text.literal("Prežité kolá: " + stats.roundsSurvived), false);
         player.sendMessage(Text.literal("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord)), false);
         player.sendMessage(Text.literal("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s")), false);
         return 1;
@@ -595,6 +601,18 @@ public final class IceRushGame {
             return;
         }
         if (state == State.FINISHED) {
+            if (celebrationTicks > 0 && server.getTicks() % 5 == 0) {
+                celebrationTicks--;
+                ServerPlayerEntity winnerPlayer = winner == null ? null : server.getPlayerManager().getPlayer(winner);
+                if (winnerPlayer != null && arenaWorld != null) {
+                    double x = winnerPlayer.getX();
+                    double y = winnerPlayer.getY() + 1.0;
+                    double z = winnerPlayer.getZ();
+                    arenaWorld.spawnParticles(ParticleTypes.FIREWORK, x, y, z, 10, 0.8, 0.7, 0.8, 0.08);
+                    arenaWorld.spawnParticles(ParticleTypes.HAPPY_VILLAGER, x, y, z, 8, 0.7, 0.7, 0.7, 0.04);
+                    arenaWorld.spawnParticles(ParticleTypes.TOTEM_OF_UNDYING, x, y, z, 5, 0.5, 0.8, 0.5, 0.03);
+                }
+            }
             timer--;
             if (timer <= 0) resetGame(server, false);
         }
@@ -610,6 +628,7 @@ public final class IceRushGame {
             p.parked = false;
             p.parkingSpot = -1;
             p.ready = false;
+            p.appliedSpeedScale = 1.0;
         }
         occupiedSpots.clear();
         state = State.RACING;
@@ -651,7 +670,7 @@ public final class IceRushGame {
                 for (int dz = -1; dz <= 1; dz++) {
                     BlockPos pos = center.add(dx, 0, dz);
                     parkingOriginalStates.putIfAbsent(pos, arenaWorld.getBlockState(pos));
-                    arenaWorld.setBlockState(pos, Blocks.LIGHT_BLUE_CONCRETE.getDefaultState());
+                    parkingAnimationBlocks.add(pos);
                 }
             }
         }
@@ -664,10 +683,20 @@ public final class IceRushGame {
             }
         }
         parkingOriginalStates.clear();
+        parkingAnimationBlocks.clear();
+        parkingAnimationIndex = 0;
     }
 
     private void tickParkingVisuals(MinecraftServer server) {
-        if (arenaWorld == null || server.getTicks() % 10 != 0) return;
+        if (arenaWorld == null) return;
+        // Miesta sa postupne vyskladajú namiesto okamžitého objavenia celej plochy.
+        for (int placed = 0; placed < 8 && parkingAnimationIndex < parkingAnimationBlocks.size(); placed++) {
+            BlockPos pos = parkingAnimationBlocks.get(parkingAnimationIndex++);
+            arenaWorld.setBlockState(pos, Blocks.LIGHT_BLUE_CONCRETE.getDefaultState());
+            arenaWorld.spawnParticles(ParticleTypes.SNOWFLAKE, pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5, 5, 0.25, 0.1, 0.25, 0.01);
+            arenaWorld.playSound(null, pos, SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.BLOCKS, 0.25F, 1.6F);
+        }
+        if (server.getTicks() % 10 != 0) return;
         for (BlockPos pos : parkingOriginalStates.keySet()) {
             arenaWorld.spawnParticles(ParticleTypes.SNOWFLAKE, pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5, 2, 0.25, 0.1, 0.25, 0.005);
         }
@@ -715,6 +744,7 @@ public final class IceRushGame {
             if (participant.parked) {
                 participant.points += 10;
                 participant.points += 5;
+                participant.roundsSurvived++;
                 if (participant.parkingTimeTicks > 0 &&
                     (participant.bestParkingTicks == 0 || participant.parkingTimeTicks < participant.bestParkingTicks)) {
                     participant.bestParkingTicks = participant.parkingTimeTicks;
@@ -808,7 +838,10 @@ public final class IceRushGame {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
-            double speed = boat.getVelocity().horizontalLength();
+            Vec3d currentVelocity = boat.getVelocity();
+            double previousScale = Math.max(0.60, Math.min(1.0, participant.appliedSpeedScale));
+            Vec3d unscaledVelocity = new Vec3d(currentVelocity.x / previousScale, currentVelocity.y, currentVelocity.z / previousScale);
+            double speed = unscaledVelocity.horizontalLength();
             participant.speedRecord = Math.max(participant.speedRecord, speed);
             double normalizedSpeed = Math.max(0.0, Math.min(1.0, speed / config.speedReference));
             int availableSteps = (100 - config.minimumSpeedPercent) / 5;
@@ -827,6 +860,11 @@ public final class IceRushGame {
                 bar.setColor(BossBar.Color.RED);
                 bar.setName(Text.literal("RÝCHLOSŤ — " + participant.speedPercent + "%"));
             }
+            // Rýchlostný stupeň je zároveň fyzickým limitom: najprv obnovíme odhad
+            // rýchlosti pred predchádzajúcim limitom a potom aplikujeme nový násobiteľ.
+            double targetScale = participant.speedPercent / 100.0;
+            boat.setVelocity(new Vec3d(unscaledVelocity.x * targetScale, currentVelocity.y, unscaledVelocity.z * targetScale));
+            participant.appliedSpeedScale = targetScale;
             bar.setPercent(participant.speedPercent / 100.0F);
         }
     }
@@ -837,6 +875,7 @@ public final class IceRushGame {
         for (Participant participant : participants.values()) {
             participant.turboTicks = 0;
             participant.turboActive = false;
+            participant.appliedSpeedScale = 1.0;
             participant.speedPercent = config.minimumSpeedPercent;
             participant.turboZonesUsed.clear();
         }
@@ -1058,12 +1097,14 @@ public final class IceRushGame {
             broadcast(server, Text.literal("🏆 " + name + " VYHRÁVA ICE RUSH!").formatted(Formatting.GOLD, Formatting.BOLD));
             Participant winnerParticipant = participants.get(winner);
             if (winnerParticipant != null) winnerParticipant.points += 100;
+            celebrationTicks = 100;
             if (player != null) {
                 sendTitle(player, "VÍŤAZ!", "Vyhrávaš ICE RUSH!");
                 if (arenaWorld != null) {
                     arenaWorld.spawnParticles(ParticleTypes.FIREWORK, player.getX(), player.getY() + 1.0, player.getZ(), 100, 1.2, 1.0, 1.2, 0.12);
                     arenaWorld.spawnParticles(ParticleTypes.HAPPY_VILLAGER, player.getX(), player.getY() + 1.0, player.getZ(), 60, 1.0, 1.0, 1.0, 0.1);
-                    arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 1.5F, 0.8F);
+                    arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.MUSIC_DISC_OTHERSIDE, SoundCategory.RECORDS, 1.0F, 1.0F);
+                    arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 1.2F, 0.8F);
                 }
                 player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší. +100 bodov. Spolu: " + (winnerParticipant == null ? 100 : winnerParticipant.points)).formatted(Formatting.GREEN, Formatting.BOLD), false);
             }
@@ -1106,6 +1147,7 @@ public final class IceRushGame {
             else if (!participant.playerName.isBlank()) stats.playerName = participant.playerName;
             stats.points += participant.points;
             stats.turboBonuses += participant.turboBonuses;
+            stats.roundsSurvived += participant.roundsSurvived;
             stats.speedRecord = Math.max(stats.speedRecord, participant.speedRecord);
             if (participant.bestParkingTicks > 0 &&
                 (stats.bestParkingTicks == 0 || participant.bestParkingTicks < stats.bestParkingTicks)) {
@@ -1113,13 +1155,22 @@ public final class IceRushGame {
             }
             if (participant.id.equals(winner)) {
                 stats.wins++;
-                if (!stats.achievements.contains("First Win")) stats.achievements.add("First Win");
+                unlockAchievement(stats, "Prvá výhra", stats.wins >= 1);
                 ServerPlayerEntity winnerPlayer = server.getPlayerManager().getPlayer(winner);
                 String winnerName = winnerPlayer == null ? (stats.playerName.isBlank() ? winner.toString().substring(0, 8) : stats.playerName) : winnerPlayer.getName().getString();
                 statsStore.setLastWinner(winnerName);
             } else stats.losses++;
+            unlockAchievement(stats, "Ice King", stats.wins >= 10);
+            unlockAchievement(stats, "Turbo Master", stats.turboBonuses >= 25);
+            unlockAchievement(stats, "Speed Demon", stats.speedRecord >= config.speedReference);
+            unlockAchievement(stats, "Survivor", stats.roundsSurvived >= 10);
+            unlockAchievement(stats, "Perfect Parking", stats.bestParkingTicks > 0 && stats.bestParkingTicks <= 100);
         }
         statsStore.save();
+    }
+
+    private void unlockAchievement(IceRushStatsStore.PlayerStats stats, String name, boolean condition) {
+        if (condition && !stats.achievements.contains(name)) stats.achievements.add(name);
     }
 
     private void resetGame(MinecraftServer server, boolean adminReset) {
@@ -1147,6 +1198,7 @@ public final class IceRushGame {
         round = 0;
         resultsCommitted = false;
         winner = null;
+        celebrationTicks = 0;
         if (!adminReset) broadcast(server, Text.literal("ICE RUSH sa skončilo. Lobby je znovu otvorené.").formatted(Formatting.AQUA));
     }
 
