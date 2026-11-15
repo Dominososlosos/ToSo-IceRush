@@ -528,6 +528,7 @@ public final class IceRushGame {
         if (forLobby) broadcast(server, Text.literal("ICE RUSH sa začína!").formatted(Formatting.GOLD, Formatting.BOLD));
         else broadcast(server, Text.literal("Priprav sa na ďalšie kolo!").formatted(Formatting.GOLD, Formatting.BOLD));
         broadcast(server, Text.literal(String.valueOf(config.countdownSeconds)).formatted(Formatting.YELLOW, Formatting.BOLD));
+        broadcastTitle(server, String.valueOf(config.countdownSeconds), "PRIPRAV SA!", 20);
     }
 
     public void tick(MinecraftServer server) {
@@ -555,6 +556,7 @@ public final class IceRushGame {
                 int secondsLeft = timer / 20;
                 if (secondsLeft < config.countdownSeconds) {
                     broadcast(server, Text.literal(String.valueOf(secondsLeft)).formatted(Formatting.YELLOW, Formatting.BOLD));
+                    broadcastTitle(server, String.valueOf(secondsLeft), "PRIPRAV SA!", 20);
                 }
             }
             if (timer <= 0) startRound(server);
@@ -621,6 +623,7 @@ public final class IceRushGame {
         roundTicks = 0;
         prepareRoundModifiers(server);
         broadcast(server, Text.literal("ŠTART! Kolo " + round + " — jazda!").formatted(Formatting.GREEN, Formatting.BOLD));
+        broadcastTitle(server, "ŠTART!", "KOLO " + round, 30);
     }
 
     private void beginParking(MinecraftServer server) {
@@ -1062,8 +1065,20 @@ public final class IceRushGame {
         commitResults(server);
     }
 
+    private void broadcastTitle(MinecraftServer server, String title, String subtitle, int stayTicks) {
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player != null) sendTitle(player, title, subtitle, stayTicks);
+        }
+    }
+
     private void sendTitle(ServerPlayerEntity player, String title, String subtitle) {
-        player.networkHandler.sendPacket(new TitleFadeS2CPacket(10, 60, 20));
+        sendTitle(player, title, subtitle, 60);
+    }
+
+    private void sendTitle(ServerPlayerEntity player, String title, String subtitle, int stayTicks) {
+        player.networkHandler.sendPacket(new TitleFadeS2CPacket(5, stayTicks, 5));
         player.networkHandler.sendPacket(new TitleS2CPacket(Text.literal(title)));
         player.networkHandler.sendPacket(new SubtitleS2CPacket(Text.literal(subtitle)));
     }
