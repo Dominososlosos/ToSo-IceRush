@@ -441,6 +441,10 @@ public final class IceRushGame {
             tickTurbo(server);
             tickCracks(server);
             applyRoundEvent(server);
+            if (activeCount() <= 1) {
+                declareWinner(server);
+                return;
+            }
             timer--;
             if (timer <= 0) beginParking(server);
             return;
@@ -450,6 +454,10 @@ public final class IceRushGame {
             if (server.getTicks() % 20 == 0) updateHud(server);
             enforceBoatSeats(server);
             tickCracks(server);
+            if (activeCount() <= 1) {
+                declareWinner(server);
+                return;
+            }
             tickParkingVisuals(server);
             updateParking(server);
             timer--;
