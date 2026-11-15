@@ -69,6 +69,8 @@ public final class IceRushGame {
     private final List<BlockPos> parkingAnimationBlocks = new ArrayList<>();
     private int parkingAnimationIndex;
     private int celebrationTicks;
+    private boolean sidebarInitialized;
+    private final List<String> sidebarEntries = new ArrayList<>();
     private String roundEvent = "NONE";
     private ServerWorld arenaWorld;
     private BlockPos arenaCenter;
@@ -620,6 +622,7 @@ public final class IceRushGame {
     }
 
     public void tick(MinecraftServer server) {
+        if (server.getTicks() % 20 == 0) updateSidebar(server);
         if (state == State.WAITING) return;
         if (state == State.COUNTDOWN) {
             if (arenaWorld == null) {
@@ -880,6 +883,39 @@ public final class IceRushGame {
         for (UUID id : lateSpectators) {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
             if (player != null) phaseBar.addPlayer(player);
+        }
+    }
+
+    private void updateSidebar(MinecraftServer server) {
+        if (!sidebarInitialized) {
+            server.getCommandManager().executeWithPrefix(server.getCommandSource(),
+                "scoreboard objectives add icerush dummy {\\\"text\\\":\\\"ICE RUSH\\\",\\\"color\\\":\\\"aqua\\\",\\\"bold\\\":true}");
+            server.getCommandManager().executeWithPrefix(server.getCommandSource(), "scoreboard objectives setdisplay sidebar icerush");
+            server.getCommandManager().executeWithPrefix(server.getCommandSource(), "scoreboard players reset * icerush");
+            sidebarInitialized = true;
+        }
+        for (String previous : sidebarEntries) {
+            server.getCommandManager().executeWithPrefix(server.getCommandSource(),
+                "scoreboard players reset \\\"" + previous.replace("\\\"", "") + "\\\" icerush");
+        }
+        sidebarEntries.clear();
+        long readyCount = participants.values().stream().filter(p -> p.ready).count();
+        String phase = switch (state) {
+            case WAITING -> "ČAKÁREŇ";
+            case COUNTDOWN -> "ODPOČET";
+            case RACING -> "JAZDA";
+            case PARKING -> "PARKOVANIE";
+            case FINISHED -> "VÝSLEDOK";
+        };
+        String[] lines = state == State.WAITING
+            ? new String[]{"Hráči: " + participants.size() + "/" + config.maxPlayers,
+                "READY: " + readyCount + "/" + participants.size(), "Stav: " + phase}
+            : new String[]{"Hráči: " + activeCount(), "Kolo: " + round, "Stav: " + phase};
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].replace(\"\\\"\", \"\");
+            server.getCommandManager().executeWithPrefix(server.getCommandSource(),
+                "scoreboard players set \\\"" + line + "\\\" icerush " + (lines.length - i));
+            sidebarEntries.add(line);
         }
     }
 
