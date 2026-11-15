@@ -25,6 +25,8 @@ final class IceRushStatsStore {
         int turboBonuses;
         double speedRecord;
         int bestParkingTicks;
+        String playerName = "";
+        java.util.List<String> achievements = new java.util.ArrayList<>();
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
