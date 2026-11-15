@@ -1233,7 +1233,7 @@ public final class IceRushGame {
                 if (arenaWorld != null) {
                     arenaWorld.spawnParticles(ParticleTypes.FIREWORK, player.getX(), player.getY() + 1.0, player.getZ(), 100, 1.2, 1.0, 1.2, 0.12);
                     arenaWorld.spawnParticles(ParticleTypes.HAPPY_VILLAGER, player.getX(), player.getY() + 1.0, player.getZ(), 60, 1.0, 1.0, 1.0, 0.1);
-                    arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.MUSIC_DISC_OTHERSIDE, SoundCategory.RECORDS, 1.0F, 1.0F);
+                    arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.MUSIC_DISC_OTHERSIDE.value(), SoundCategory.RECORDS, 1.0F, 1.0F);
                     arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 1.2F, 0.8F);
                 }
                 player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší. +100 bodov. Spolu: " + (winnerParticipant == null ? 100 : winnerParticipant.points)).formatted(Formatting.GREEN, Formatting.BOLD), false);
