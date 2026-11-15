@@ -479,6 +479,11 @@ public final class IceRushGame {
                 participant.eliminated = true;
                 if (player != null) {
                     player.stopRiding();
+                    BoatEntity eliminatedBoat = playerBoats.remove(participant.id);
+                    if (eliminatedBoat != null && !eliminatedBoat.isRemoved()) eliminatedBoat.discard();
+                    ServerBossBar speedBar = speedBars.remove(participant.id);
+                    if (speedBar != null) speedBar.clearPlayers();
+                    phaseBar.removePlayer(player);
                     player.changeGameMode(GameMode.SPECTATOR);
                     player.sendMessage(Text.literal("VYPADÁVAŠ! Nenašiel/nenašla si parkovacie miesto. Body: " + participant.points).formatted(Formatting.RED, Formatting.BOLD), false);
                 }
@@ -627,6 +632,11 @@ public final class IceRushGame {
             if (player != null && player.getVehicle() instanceof BoatEntity boat && boat.getY() < arenaCenter.getY() - 2) {
                 participant.eliminated = true;
                 player.stopRiding();
+                BoatEntity eliminatedBoat = playerBoats.remove(participant.id);
+                if (eliminatedBoat != null && !eliminatedBoat.isRemoved()) eliminatedBoat.discard();
+                ServerBossBar speedBar = speedBars.remove(participant.id);
+                if (speedBar != null) speedBar.clearPlayers();
+                phaseBar.removePlayer(player);
                 player.changeGameMode(GameMode.SPECTATOR);
                 player.sendMessage(Text.literal("VYPADÁVAŠ! Prepadol si sa cez prasknutý ľad.").formatted(Formatting.RED, Formatting.BOLD), false);
             }
@@ -705,6 +715,7 @@ public final class IceRushGame {
 
     private void spawnRoundBoats(MinecraftServer server) {
         if (arenaWorld == null || startPositions.isEmpty()) return;
+        Collections.shuffle(startPositions);
         int index = 0;
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
