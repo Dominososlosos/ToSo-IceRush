@@ -258,6 +258,12 @@ public final class IceRushGame {
         }
         startPositions.clear();
         parkingSpots.clear();
+        crackPositions.clear();
+        for (int i = 0; i < 8; i++) {
+            double angle = (Math.PI * 2.0 * i) / 8.0;
+            double radius = (config.trackInnerRadius + config.trackOuterRadius) / 2.0;
+            crackPositions.add(new BlockPos((int) Math.round(cx + Math.cos(angle) * radius), cy, (int) Math.round(cz + Math.sin(angle) * radius)));
+        }
         for (int i = 0; i < config.maxPlayers; i++) {
             double angle = (Math.PI * 2.0 * i) / config.maxPlayers;
             Vec3d position = new Vec3d(cx + Math.cos(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5, cy + 1.0, cz + Math.sin(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5);
