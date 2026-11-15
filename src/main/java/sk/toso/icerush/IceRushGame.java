@@ -17,6 +17,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.BlockState;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -51,6 +52,7 @@ public final class IceRushGame {
     private final List<BlockPos> crackPositions = new ArrayList<>();
     private final Set<BlockPos> openCracks = new HashSet<>();
     private final Map<BlockPos, Integer> warningCracks = new LinkedHashMap<>();
+    private final Map<BlockPos, BlockState> parkingOriginalStates = new LinkedHashMap<>();
     private String roundEvent = "NONE";
     private ServerWorld arenaWorld;
     private BlockPos arenaCenter;
@@ -478,11 +480,45 @@ public final class IceRushGame {
         phaseBar.setColor(BossBar.Color.YELLOW);
         phaseBar.setPercent(1.0F);
         Collections.shuffle(parkingSpots);
+        showParkingPads();
         state = State.PARKING;
         timer = config.parkingSeconds * 20;
         occupiedSpots.clear();
         for (Participant p : participants.values()) { p.parked = false; p.parkingSpot = -1; }
         broadcast(server, Text.literal("PARKOVANIE! Máš 20 sekúnd na obsadenie miesta.").formatted(Formatting.GOLD, Formatting.BOLD));
+    }
+
+    private void showParkingPads() {
+        hideParkingPads();
+        if (arenaWorld == null || arenaCenter == null) return;
+        int count = Math.min(parkingSpots.size(), Math.max(0, activeCount() - 1));
+        for (int i = 0; i < count; i++) {
+            Vec3d spot = parkingSpots.get(i);
+            BlockPos center = new BlockPos((int) Math.floor(spot.x), arenaCenter.getY() - 1, (int) Math.floor(spot.z));
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    BlockPos pos = center.add(dx, 0, dz);
+                    parkingOriginalStates.putIfAbsent(pos, arenaWorld.getBlockState(pos));
+                    arenaWorld.setBlockState(pos, Blocks.LIGHT_BLUE_CONCRETE.getDefaultState());
+                }
+            }
+        }
+    }
+
+    private void hideParkingPads() {
+        if (arenaWorld != null) {
+            for (Map.Entry<BlockPos, BlockState> entry : parkingOriginalStates.entrySet()) {
+                arenaWorld.setBlockState(entry.getKey(), entry.getValue());
+            }
+        }
+        parkingOriginalStates.clear();
+    }
+
+    private void tickParkingVisuals(MinecraftServer server) {
+        if (arenaWorld == null || server.getTicks() % 10 != 0) return;
+        for (BlockPos pos : parkingOriginalStates.keySet()) {
+            arenaWorld.spawnParticles(ParticleTypes.SNOWFLAKE, pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5, 2, 0.25, 0.1, 0.25, 0.005);
+        }
     }
 
     private void updateParking(MinecraftServer server) {
@@ -804,7 +840,12 @@ public final class IceRushGame {
             broadcast(server, Text.literal("🏆 " + name + " VYHRÁVA ICE RUSH!").formatted(Formatting.GOLD, Formatting.BOLD));
             Participant winnerParticipant = participants.get(winner);
             if (winnerParticipant != null) winnerParticipant.points += 100;
-            if (player != null) player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší. +100 bodov. Spolu: " + (winnerParticipant == null ? 100 : winnerParticipant.points)).formatted(Formatting.GREEN, Formatting.BOLD), false);
+            if (player != null) {
+                if (arenaWorld != null) {
+                    arenaWorld.spawnParticles(ParticleTypes.FIREWORK, player.getX(), player.getY() + 1.0, player.getZ(), 100, 1.2, 1.0, 1.2, 0.12);
+                    arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 1.5F, 0.8F);
+                }
+                player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší. +100 bodov. Spolu: " + (winnerParticipant == null ? 100 : winnerParticipant.points)).formatted(Formatting.GREEN, Formatting.BOLD), false);
         } else {
             broadcast(server, Text.literal("ICE RUSH sa skončilo bez víťaza.").formatted(Formatting.RED));
         }
