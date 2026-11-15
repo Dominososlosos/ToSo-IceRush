@@ -92,6 +92,7 @@ public final class IceRushGame {
         private boolean eliminated;
         private boolean parked;
         private boolean parkingRewarded;
+        private boolean survivalRewarded;
         private int parkingSpot = -1;
         private int points;
         private int turboTicks;
@@ -759,6 +760,8 @@ public final class IceRushGame {
             p.parked = false;
             p.parkingSpot = -1;
             p.ready = false;
+            p.parkingRewarded = false;
+            p.survivalRewarded = false;
             p.appliedSpeedScale = 1.0;
         }
         occupiedSpots.clear();
@@ -874,9 +877,15 @@ public final class IceRushGame {
     private void awardSurvivingParkingRewards(MinecraftServer server) {
         for (Participant participant : participants.values()) {
             if (participant.eliminated || !participant.parked || participant.parkingRewarded) continue;
-            participant.points += 15;
-            participant.roundsSurvived++;
-            participant.parkingRewarded = true;
+            if (!participant.parkingRewarded) {
+                participant.points += 10;
+                participant.parkingRewarded = true;
+            }
+            if (!participant.survivalRewarded) {
+                participant.points += 5;
+                participant.roundsSurvived++;
+                participant.survivalRewarded = true;
+            }
             if (participant.parkingTimeTicks > 0 &&
                 (participant.bestParkingTicks == 0 || participant.parkingTimeTicks < participant.bestParkingTicks)) {
                 participant.bestParkingTicks = participant.parkingTimeTicks;
@@ -894,9 +903,12 @@ public final class IceRushGame {
             if (participant.parked) {
                 if (!participant.parkingRewarded) {
                     participant.points += 10;
+                    participant.parkingRewarded = true;
+                }
+                if (!participant.survivalRewarded) {
                     participant.points += 5;
                     participant.roundsSurvived++;
-                    participant.parkingRewarded = true;
+                    participant.survivalRewarded = true;
                 }
                 if (participant.parkingTimeTicks > 0 &&
                     (participant.bestParkingTicks == 0 || participant.parkingTimeTicks < participant.bestParkingTicks)) {
@@ -1401,7 +1413,14 @@ public final class IceRushGame {
             String name = player == null ? "Víťaz" : player.getName().getString();
             broadcast(server, Text.literal("🏆 " + name + " VYHRÁVA ICE RUSH!").formatted(Formatting.GOLD, Formatting.BOLD));
             Participant winnerParticipant = participants.get(winner);
-            if (winnerParticipant != null) winnerParticipant.points += 100;
+            if (winnerParticipant != null) {
+                if (round > 0 && !winnerParticipant.survivalRewarded) {
+                    winnerParticipant.points += 5;
+                    winnerParticipant.roundsSurvived++;
+                    winnerParticipant.survivalRewarded = true;
+                }
+                winnerParticipant.points += 100;
+            }
             celebrationTicks = 100;
             if (player != null) {
                 sendTitle(player, "VÍŤAZ!", "Vyhrávaš ICE RUSH!");
