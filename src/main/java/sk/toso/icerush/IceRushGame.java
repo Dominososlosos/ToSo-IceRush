@@ -889,7 +889,6 @@ public final class IceRushGame {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
-            Vec3d velocity = boat.getVelocity();
             for (int i = 0; i < turboZones.size(); i++) {
                 if (boat.getPos().squaredDistanceTo(turboZones.get(i)) > 9.0) {
                     participant.turboZonesUsed.remove(i);
