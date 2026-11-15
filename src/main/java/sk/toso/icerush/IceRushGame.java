@@ -718,7 +718,7 @@ public final class IceRushGame {
     }
 
     private void tickCracks(MinecraftServer server) {
-        if (arenaWorld == null) return;
+        if (arenaWorld == null || (warningCracks.isEmpty() && openCracks.isEmpty())) return;
         for (Map.Entry<BlockPos, Integer> entry : new ArrayList<>(warningCracks.entrySet())) {
             BlockPos pos = entry.getKey();
             int left = entry.getValue() - 1;
@@ -732,6 +732,7 @@ public final class IceRushGame {
                 if (left % 10 == 0) arenaWorld.spawnParticles(ParticleTypes.CRIT, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 5, 0.25, 0.1, 0.25, 0.01);
             }
         }
+        if (openCracks.isEmpty()) return;
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
@@ -765,6 +766,7 @@ public final class IceRushGame {
                     participant.turboActive = false;
                 }
             }
+            if (server.getTicks() % 5 != 0) continue;
             Vec3d velocity = boat.getVelocity();
             for (int i = 0; i < turboZones.size(); i++) {
                 if (boat.getPos().squaredDistanceTo(turboZones.get(i)) > 9.0) {
@@ -790,7 +792,7 @@ public final class IceRushGame {
     }
 
     private void applyRoundEvent(MinecraftServer server) {
-        if (roundEvent.equals("NONE") || arenaWorld == null) return;
+        if (roundEvent.equals("NONE") || arenaWorld == null || server.getTicks() % 5 != 0) return;
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
@@ -799,11 +801,11 @@ public final class IceRushGame {
                 arenaWorld.spawnParticles(ParticleTypes.SNOWFLAKE, boat.getX(), boat.getY() + 1.0, boat.getZ(), 8, 0.7, 0.3, 0.7, 0.01);
             } else if (roundEvent.equals("WIND")) {
                 double yaw = Math.toRadians(boat.getYaw());
-                boat.addVelocity(-Math.sin(yaw) * 0.00005, 0.0, Math.cos(yaw) * 0.00005);
+                boat.addVelocity(-Math.sin(yaw) * 0.00025, 0.0, Math.cos(yaw) * 0.00025);
             } else if (roundEvent.equals("SUPER_ICE")) {
-                boat.setVelocity(boat.getVelocity().multiply(1.0005));
+                boat.setVelocity(boat.getVelocity().multiply(1.0025));
             } else if (roundEvent.equals("TURBO_MADNESS") && participant.turboTicks > 0) {
-                boat.setVelocity(boat.getVelocity().multiply(1.0008));
+                boat.setVelocity(boat.getVelocity().multiply(1.004));
             } else if (roundEvent.equals("FOG") && server.getTicks() % 20 == 0) {
                 arenaWorld.spawnParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, boat.getX(), boat.getY() + 0.4, boat.getZ(), 5, 1.0, 0.2, 1.0, 0.01);
             }
