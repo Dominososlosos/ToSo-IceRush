@@ -32,10 +32,29 @@ final class IceRushStatsStore {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Type DATA_TYPE = new TypeToken<Map<String, PlayerStats>>() {}.getType();
     private final Path file = FabricLoader.getInstance().getConfigDir().resolve("icerush-stats.json");
+    private final Path lastWinnerFile = FabricLoader.getInstance().getConfigDir().resolve("icerush-last-winner.txt");
     private final Map<UUID, PlayerStats> data = new LinkedHashMap<>();
 
     IceRushStatsStore() {
         load();
+    }
+
+    synchronized String lastWinner() {
+        try {
+            return Files.exists(lastWinnerFile) ? Files.readString(lastWinnerFile).trim() : "Zatiaľ bez víťaza";
+        } catch (Exception exception) {
+            IceRushMod.LOGGER.warn("Could not read last ICE RUSH winner", exception);
+            return "Neznámy";
+        }
+    }
+
+    synchronized void setLastWinner(String name) {
+        try {
+            Files.createDirectories(lastWinnerFile.getParent());
+            Files.writeString(lastWinnerFile, name);
+        } catch (Exception exception) {
+            IceRushMod.LOGGER.error("Could not save last ICE RUSH winner", exception);
+        }
     }
 
     synchronized PlayerStats get(UUID playerId) {
