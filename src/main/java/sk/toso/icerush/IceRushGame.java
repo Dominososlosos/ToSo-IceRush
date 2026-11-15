@@ -432,7 +432,7 @@ public final class IceRushGame {
             Vec3d pos = startPositions.get(index++ % startPositions.size());
             BoatEntity boat = playerBoats.get(participant.id);
             if (boat == null || boat.isRemoved()) {
-                boat = new BoatEntity(EntityType.OAK_BOAT, arenaWorld);
+                boat = new BoatEntity(EntityType.BOAT, arenaWorld);
                 boat.setPosition(pos);
                 arenaWorld.spawnEntity(boat);
                 playerBoats.put(participant.id, boat);
@@ -440,7 +440,7 @@ public final class IceRushGame {
                 boat.setPosition(pos);
                 boat.setVelocity(Vec3d.ZERO);
             }
-            player.teleport(arenaWorld, pos.x, pos.y + 1.0, pos.z, Set.of(), player.getYaw(), 0.0F, true);
+            player.teleport(arenaWorld, pos.x, pos.y + 1.0, pos.z, player.getYaw(), 0.0F);
             player.startRiding(boat, true);
         }
     }
