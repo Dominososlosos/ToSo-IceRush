@@ -326,7 +326,9 @@ public final class IceRushGame {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(winner);
             String name = player == null ? "Víťaz" : player.getName().getString();
             broadcast(server, Text.literal("🏆 " + name + " VYHRÁVA ICE RUSH!").formatted(Formatting.GOLD, Formatting.BOLD));
-            Participant winnerParticipant = participants.get(winner);\n            if (winnerParticipant != null) winnerParticipant.points += 100;\n            if (player != null) player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší. +100 bodov. Spolu: " + (winnerParticipant == null ? 100 : winnerParticipant.points)).formatted(Formatting.GREEN, Formatting.BOLD), false);
+            Participant winnerParticipant = participants.get(winner);
+            if (winnerParticipant != null) winnerParticipant.points += 100;
+            if (player != null) player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší. +100 bodov. Spolu: " + (winnerParticipant == null ? 100 : winnerParticipant.points)).formatted(Formatting.GREEN, Formatting.BOLD), false);
         } else {
             broadcast(server, Text.literal("ICE RUSH sa skončilo bez víťaza.").formatted(Formatting.RED));
         }
