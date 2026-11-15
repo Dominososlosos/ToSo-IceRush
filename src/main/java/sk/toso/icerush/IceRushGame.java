@@ -70,6 +70,7 @@ public final class IceRushGame {
     private int parkingAnimationIndex;
     private int celebrationTicks;
     private boolean sidebarInitialized;
+    private boolean lobbyBoardBuilt;
     private final List<String> sidebarEntries = new ArrayList<>();
     private String roundEvent = "NONE";
     private ServerWorld arenaWorld;
@@ -947,6 +948,7 @@ public final class IceRushGame {
     }
 
     private void updateSidebar(MinecraftServer server) {
+        updateLobbyLeaderboard(server);
         if (!sidebarInitialized) {
             server.getCommandManager().executeWithPrefix(server.getCommandSource(),
                 "scoreboard objectives add icerush dummy {\"text\":\"ICE RUSH\",\"color\":\"aqua\",\"bold\":true}");
@@ -977,6 +979,76 @@ public final class IceRushGame {
                 "scoreboard players set \"" + line + "\" icerush " + (lines.length - i));
             sidebarEntries.add(line);
         }
+    }
+
+    private void updateLobbyLeaderboard(MinecraftServer server) {
+        if (arenaWorld == null || arenaCenter == null) return;
+        int lobbyY = arenaCenter.getY() - 1 + config.arenaLobbyHeight;
+        if (!lobbyBoardBuilt) {
+            for (int dy = 1; dy <= 7; dy++) {
+                for (int dz = -5; dz <= 5; dz++) {
+                    arenaWorld.setBlockState(new BlockPos(arenaCenter.getX() + 7, lobbyY + dy, arenaCenter.getZ() + dz),
+                        Blocks.BLUE_CONCRETE.getDefaultState());
+                }
+            }
+            lobbyBoardBuilt = true;
+        }
+
+        List<Map.Entry<UUID, IceRushStatsStore.PlayerStats>> entries = statsStore.top(10);
+        Box boardBox = new Box(arenaCenter.getX() + 5, lobbyY - 1, arenaCenter.getZ() - 7,
+            arenaCenter.getX() + 9, lobbyY + 10, arenaCenter.getZ() + 8);
+        for (int row = 0; row <= 10; row++) {
+            String tag = "icerush_top_row_" + row;
+            final int rowIndex = row;
+            List<ArmorStandEntity> found = arenaWorld.getEntitiesByClass(ArmorStandEntity.class, boardBox,
+                stand -> stand.getCommandTags().contains(tag));
+            ArmorStandEntity label;
+            if (found.isEmpty()) {
+                label = new ArmorStandEntity(EntityType.ARMOR_STAND, arenaWorld);
+                label.setPosition(arenaCenter.getX() + 6.35, lobbyY + 5.5 - row * 0.45, arenaCenter.getZ() - 4.5);
+                label.setInvisible(true);
+                label.setNoGravity(true);
+                label.setInvulnerable(true);
+                label.setCustomNameVisible(true);
+                label.addCommandTag(tag);
+                arenaWorld.spawnEntity(label);
+            } else {
+                label = found.get(0);
+            }
+
+            Text line;
+            if (rowIndex == 0) {
+                line = Text.literal("TOP 10 — ICE RUSH").formatted(Formatting.GOLD, Formatting.BOLD);
+            } else if (rowIndex - 1 < entries.size()) {
+                Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry = entries.get(rowIndex - 1);
+                ServerPlayerEntity online = server.getPlayerManager().getPlayer(entry.getKey());
+                String name = online == null
+                    ? (entry.getValue().playerName.isBlank() ? entry.getKey().toString().substring(0, 8) : entry.getValue().playerName)
+                    : online.getName().getString();
+                line = Text.literal(rowIndex + ". " + name + " — " + entry.getValue().points + " b").formatted(Formatting.WHITE);
+            } else {
+                line = Text.literal(rowIndex + ". —").formatted(Formatting.DARK_GRAY);
+            }
+            label.setCustomName(line);
+        }
+
+        String winnerTag = "icerush_last_winner_display";
+        List<ArmorStandEntity> winnerLabels = arenaWorld.getEntitiesByClass(ArmorStandEntity.class, boardBox,
+            stand -> stand.getCommandTags().contains(winnerTag));
+        ArmorStandEntity winnerLabel;
+        if (winnerLabels.isEmpty()) {
+            winnerLabel = new ArmorStandEntity(EntityType.ARMOR_STAND, arenaWorld);
+            winnerLabel.setPosition(arenaCenter.getX() + 6.35, lobbyY + 0.8, arenaCenter.getZ() + 6.5);
+            winnerLabel.setInvisible(true);
+            winnerLabel.setNoGravity(true);
+            winnerLabel.setInvulnerable(true);
+            winnerLabel.setCustomNameVisible(true);
+            winnerLabel.addCommandTag(winnerTag);
+            arenaWorld.spawnEntity(winnerLabel);
+        } else {
+            winnerLabel = winnerLabels.get(0);
+        }
+        winnerLabel.setCustomName(Text.literal("POSLEDNÝ VÍŤAZ: " + statsStore.lastWinner()).formatted(Formatting.AQUA, Formatting.BOLD));
     }
 
     private void updateHud(MinecraftServer server) {
