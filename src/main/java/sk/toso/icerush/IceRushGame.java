@@ -113,20 +113,21 @@ public final class IceRushGame {
 
     private int join(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
-        if (state != State.WAITING) {
-            player.changeGameMode(GameMode.SPECTATOR);
-            lateSpectators.add(player.getUuid());
-            phaseBar.addPlayer(player);
-            teleportToLobby(player);
-            player.sendMessage(Text.literal("Hra už prebieha. Pripojíš sa až do ďalšej hry.").formatted(Formatting.YELLOW), false);
-            return 1;
-        }
-        if (participants.containsKey(player.getUuid())) {
-            player.sendMessage(Text.literal("Už si v lobby.").formatted(Formatting.YELLOW), false);
+        Participant existing = participants.get(player.getUuid());
+        if (existing != null) {
+            player.sendMessage(Text.literal(existing.eliminated ? "Túto hru už sleduješ ako vyradený hráč." : "Už si prihlásený do ICE RUSH."), false);
             return 0;
         }
+        if (state != State.WAITING) {
+            lateSpectators.add(player.getUuid());
+            phaseBar.addPlayer(player);
+            player.changeGameMode(GameMode.SPECTATOR);
+            teleportToLobby(player);
+            player.sendMessage(Text.literal("Hra už prebieha. Sleduješ ju a do hry sa zapojíš v ďalšom kole.").formatted(Formatting.YELLOW), false);
+            return 1;
+        }
         if (participants.size() >= config.maxPlayers) {
-            player.sendMessage(Text.literal("ICE RUSH je plný (16 hráčov).").formatted(Formatting.RED), false);
+            player.sendMessage(Text.literal("ICE RUSH je plný (" + config.maxPlayers + " hráčov).").formatted(Formatting.RED), false);
             return 0;
         }
         participants.put(player.getUuid(), new Participant(player.getUuid()));
@@ -316,13 +317,15 @@ public final class IceRushGame {
     }
 
     public void onPlayerJoin(ServerPlayerEntity player) {
-        if (state != State.WAITING && !participants.containsKey(player.getUuid())) {
-            lateSpectators.add(player.getUuid());
-            phaseBar.addPlayer(player);
-            player.changeGameMode(GameMode.SPECTATOR);
-            teleportToLobby(player);
-            player.sendMessage(Text.literal("ICE RUSH už prebieha. Zatiaľ si divák; do lobby sa pripojíš po skončení hry.").formatted(Formatting.YELLOW), false);
-        }
+        if (state == State.WAITING) return;
+        Participant existing = participants.get(player.getUuid());
+        if (existing == null) lateSpectators.add(player.getUuid());
+        phaseBar.addPlayer(player);
+        player.changeGameMode(GameMode.SPECTATOR);
+        teleportToLobby(player);
+        player.sendMessage(Text.literal(existing != null && existing.eliminated
+            ? "Už si bol vyradený. Do ďalšej hry zostávaš divákom."
+            : "ICE RUSH už prebieha. Sleduješ zápas a do ďalšieho kola sa môžeš zapojiť.").formatted(Formatting.YELLOW), false);
     }
 
     public void onPlayerDisconnect(UUID playerId) {
