@@ -79,6 +79,7 @@ public final class IceRushGame {
         private int parkingTimeTicks;
         private int bestParkingTicks;
         private double speedRecord;
+        private int speedPercent = 100;
         private final Set<Integer> turboZonesUsed = new HashSet<>();
 
         private Participant(UUID id) {
@@ -676,19 +677,24 @@ public final class IceRushGame {
             if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
             double speed = boat.getVelocity().horizontalLength();
             participant.speedRecord = Math.max(participant.speedRecord, speed);
+            double normalizedSpeed = Math.max(0.0, Math.min(1.0, speed / config.speedReference));
+            int availableSteps = (100 - config.minimumSpeedPercent) / 5;
+            int speedTier = (int) Math.floor(normalizedSpeed * availableSteps);
+            participant.speedPercent = Math.max(config.minimumSpeedPercent,
+                Math.min(100, config.minimumSpeedPercent + speedTier * 5));
             ServerBossBar bar = speedBars.get(participant.id);
             if (bar == null) continue;
-            if (speed >= 0.18) {
+            if (participant.speedPercent >= 80) {
                 bar.setColor(BossBar.Color.GREEN);
-                bar.setName(Text.literal("RÝCHLOSŤ — RÝCHLA"));
-            } else if (speed >= 0.10) {
+                bar.setName(Text.literal("RÝCHLOSŤ — " + participant.speedPercent + "%"));
+            } else if (participant.speedPercent >= 70) {
                 bar.setColor(BossBar.Color.YELLOW);
-                bar.setName(Text.literal("RÝCHLOSŤ — STREDNÁ"));
+                bar.setName(Text.literal("RÝCHLOSŤ — " + participant.speedPercent + "%"));
             } else {
                 bar.setColor(BossBar.Color.RED);
-                bar.setName(Text.literal("RÝCHLOSŤ — POMALÁ"));
+                bar.setName(Text.literal("RÝCHLOSŤ — " + participant.speedPercent + "%"));
             }
-            bar.setPercent((float) Math.max(0.0, Math.min(1.0, speed / 0.30)));
+            bar.setPercent(participant.speedPercent / 100.0F);
         }
     }
 
@@ -798,7 +804,7 @@ public final class IceRushGame {
                     continue;
                 }
                 if (participant.turboZonesUsed.contains(i)) continue;
-                if (velocity.horizontalLength() < 0.18) continue;
+                if (participant.speedPercent < 80) continue;
                 participant.turboZonesUsed.add(i);
                 if (!participant.turboActive) {
                     boat.setVelocity(boat.getVelocity().multiply(1.05));
