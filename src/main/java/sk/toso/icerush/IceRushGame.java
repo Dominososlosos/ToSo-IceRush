@@ -588,6 +588,9 @@ public final class IceRushGame {
                 broadcast(server, Text.literal(name + " opustil zápas a vypadáva.").formatted(Formatting.RED));
             }
             lateSpectators.remove(playerId);
+            if (state == State.COUNTDOWN && !lobbyCountdown && activeCount() <= 1) {
+                declareWinner(server);
+            }
         }
     }
 
@@ -1170,9 +1173,10 @@ public final class IceRushGame {
     }
 
     private void admitLateSpectators(MinecraftServer server) {
-        if (lateSpectators.isEmpty() || activeCount() >= config.maxPlayers) return;
+        int capacity = Math.min(config.maxPlayers, parkingSpots.size() + 1);
+        if (lateSpectators.isEmpty() || activeCount() >= capacity) return;
         for (UUID id : new ArrayList<>(lateSpectators)) {
-            if (activeCount() >= config.maxPlayers) break;
+            if (activeCount() >= capacity) break;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
             if (player == null) continue;
             Participant participant = new Participant(id);
