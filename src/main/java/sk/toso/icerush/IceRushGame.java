@@ -774,7 +774,7 @@ public final class IceRushGame {
 
     private void beginParking(MinecraftServer server) {
         clearSpeedBars();
-        phaseBar.setName(Text.literal("PARKOVANIE — 20 SEKÚND"));
+        phaseBar.setName(Text.literal("PARKOVANIE — " + config.parkingSeconds + " SEKÚND"));
         phaseBar.setColor(BossBar.Color.YELLOW);
         phaseBar.setPercent(1.0F);
         Collections.shuffle(parkingSpots);
@@ -783,7 +783,7 @@ public final class IceRushGame {
         timer = config.parkingSeconds * 20;
         occupiedSpots.clear();
         for (Participant p : participants.values()) { p.parked = false; p.parkingRewarded = false; p.parkingSpot = -1; }
-        broadcast(server, Text.literal("PARKOVANIE! Máš 20 sekúnd na obsadenie miesta.").formatted(Formatting.GOLD, Formatting.BOLD));
+        broadcast(server, Text.literal("PARKOVANIE! Máš " + config.parkingSeconds + " sekúnd na obsadenie miesta.").formatted(Formatting.GOLD, Formatting.BOLD));
     }
 
     private void showParkingPads() {
