@@ -512,11 +512,19 @@ public final class IceRushGame {
     private int showAchievements(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
-        player.sendMessage(Text.literal("ICE RUSH — ACHIEVEMENTY"), false);
-        if (stats.achievements.isEmpty()) {
-            player.sendMessage(Text.literal("Zatiaľ nemáš odomknuté achievementy."), false);
-        } else {
-            for (String achievement : stats.achievements) player.sendMessage(Text.literal("• " + achievement), false);
+        player.sendMessage(Text.literal("ICE RUSH — ACHIEVEMENTY").formatted(Formatting.GOLD, Formatting.BOLD), false);
+        String[][] goals = {
+            {"Prvá výhra", "1 výhra", stats.wins >= 1 ? "1" : "0"},
+            {"Ice King", "10 výhier", String.valueOf(stats.wins)},
+            {"Turbo Master", "25 turbo bonusov", String.valueOf(stats.turboBonuses)},
+            {"Speed Demon", "dosiahni referenčnú rýchlosť " + String.format(java.util.Locale.ROOT, "%.2f", config.speedReference), String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord)},
+            {"Survivor", "preži 10 kôl", String.valueOf(stats.roundsSurvived)},
+            {"Perfect Parking", "zaparkuj za najviac 5 sekúnd", stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s"}
+        };
+        for (String[] goal : goals) {
+            boolean unlocked = stats.achievements.contains(goal[0]);
+            player.sendMessage(Text.literal((unlocked ? "§a✓ " : "§7○ ") + goal[0] + " — " + goal[1]
+                + (unlocked ? " [ODOMKNUTÉ]" : " [ZAMKNUTÉ]")), false);
         }
         return 1;
     }
