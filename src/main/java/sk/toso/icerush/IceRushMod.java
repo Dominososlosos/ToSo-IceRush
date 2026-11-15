@@ -5,6 +5,9 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.ActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +23,12 @@ public final class IceRushMod implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTED.register(game::onServerStarted);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> game.onPlayerJoin(handler.player));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> game.onPlayerDisconnect(handler.player.getUuid()));
+        UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (!game.isLobbyButton(entity)) return ActionResult.PASS;
+            if (world.isClient) return ActionResult.SUCCESS;
+            if (player instanceof ServerPlayerEntity serverPlayer) game.handleLobbyButton(serverPlayer, entity);
+            return ActionResult.SUCCESS;
+        });
         LOGGER.info("ICE RUSH initialized for Fabric Loader 0.19.1 / Minecraft 1.21.1");
     }
 }
