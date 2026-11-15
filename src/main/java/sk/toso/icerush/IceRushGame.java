@@ -1403,6 +1403,8 @@ public final class IceRushGame {
     }
 
     private void declareWinner(MinecraftServer server) {
+        hideParkingPads();
+        resetCracks();
         clearSpeedBars();
         phaseBar.clearPlayers();
         winner = participants.values().stream().filter(p -> !p.eliminated).map(p -> p.id).findFirst().orElse(null);
