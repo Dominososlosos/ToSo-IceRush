@@ -258,28 +258,22 @@ public final class IceRushGame {
     private int showStats(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
-        Text message = Text.literal("ICE RUSH ŠTATISTIKY
-")
-            .append("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "
-")
-            .append("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "
-")
-            .append("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "
-")
-            .append("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s"));
+        MutableText message = Text.literal("ICE RUSH ŠTATISTIKY\n");
+        message.append(Text.literal("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "\n"));
+        message.append(Text.literal("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "\n"));
+        message.append(Text.literal("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "\n"));
+        message.append(Text.literal("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s")));
         player.sendMessage(message, false);
         return 1;
     }
 
     private int showTop(ServerCommandSource source) {
-        Text message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV
-");
+        MutableText message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV\n");
         int rank = 1;
         for (Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry : statsStore.top(10)) {
             ServerPlayerEntity online = source.getServer().getPlayerManager().getPlayer(entry.getKey());
             String name = online == null ? entry.getKey().toString().substring(0, 8) : online.getName().getString();
-            message.append(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")
-");
+            message.append(Text.literal(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")\n"));
         }
         source.sendFeedback(() -> message, false);
         return 1;
