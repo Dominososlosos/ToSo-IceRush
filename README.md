@@ -42,6 +42,6 @@ The Fabric server mod currently includes the lobby commands, one-time READY vote
 3. Players run `/icerush join`, then `/icerush ready`. The game starts after at least 80% have voted READY and enough parking positions exist.
 4. Admins can inspect the state with `/icerush status` and stop/reset with `/icerush reset`.
 
-This is an active development build, not yet feature-complete against `ICE RUSH.docx`. The full 100–60% speed-penalty algorithm, full parking animation, lobby buttons/rules, achievement criteria beyond First Win, and winner title/music/confetti effects are still pending. Persistent statistics, a command-based TOP 10, a First Win achievement, and editable gameplay configuration are implemented. The current speed BossBar shows red/yellow/green movement stages; the precise penalty thresholds have not been invented because the specification does not define them.
+This is an active development build, not yet feature-complete against `ICE RUSH.docx`. The physical boat-speed scaling for the 100–60% penalty tiers, full parking animation, lobby buttons, achievement criteria beyond First Win, and winner title/music/confetti effects are still pending. Persistent statistics, a command-based TOP 10, a First Win achievement, and editable gameplay configuration are implemented. The speed BossBar displays nine 60–100% tiers, calculated linearly from the configured reference speed; the mod does not yet apply those percentages as a physical boat-speed cap.
 
 The legacy datapack remains in `datapack/` as a reference and is not loaded by the Fabric mod.
