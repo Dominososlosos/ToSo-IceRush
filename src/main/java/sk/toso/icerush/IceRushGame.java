@@ -74,6 +74,8 @@ public final class IceRushGame {
         private boolean turboActive;
         private int turboBonuses;
         private int parkingTimeTicks;
+        private int bestParkingTicks;
+        private double speedRecord;
         private final Set<Integer> turboZonesUsed = new HashSet<>();
 
         private Participant(UUID id) {
@@ -466,10 +468,9 @@ public final class IceRushGame {
             if (participant.parked) {
                 participant.points += 10;
                 participant.points += 5;
-                IceRushStatsStore.PlayerStats stats = statsStore.get(participant.id);
                 if (participant.parkingTimeTicks > 0 &&
-                    (stats.bestParkingTicks == 0 || participant.parkingTimeTicks < stats.bestParkingTicks)) {
-                    stats.bestParkingTicks = participant.parkingTimeTicks;
+                    (participant.bestParkingTicks == 0 || participant.parkingTimeTicks < participant.bestParkingTicks)) {
+                    participant.bestParkingTicks = participant.parkingTimeTicks;
                 }
                 if (player != null) player.sendMessage(Text.literal("+10 parkovanie +5 prežitie kola. Spolu: " + participant.points).formatted(Formatting.GREEN), false);
             } else {
@@ -557,7 +558,7 @@ public final class IceRushGame {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
             double speed = boat.getVelocity().horizontalLength();
-            statsStore.get(participant.id).speedRecord = Math.max(statsStore.get(participant.id).speedRecord, speed);
+            participant.speedRecord = Math.max(participant.speedRecord, speed);
             ServerBossBar bar = speedBars.get(participant.id);
             if (bar == null) continue;
             if (speed >= 0.18) {
@@ -777,6 +778,11 @@ public final class IceRushGame {
             if (player != null) stats.playerName = player.getName().getString();
             stats.points += participant.points;
             stats.turboBonuses += participant.turboBonuses;
+            stats.speedRecord = Math.max(stats.speedRecord, participant.speedRecord);
+            if (participant.bestParkingTicks > 0 &&
+                (stats.bestParkingTicks == 0 || participant.bestParkingTicks < stats.bestParkingTicks)) {
+                stats.bestParkingTicks = participant.bestParkingTicks;
+            }
             if (participant.id.equals(winner)) {
                 stats.wins++;
                 if (!stats.achievements.contains("First Win")) stats.achievements.add("First Win");
