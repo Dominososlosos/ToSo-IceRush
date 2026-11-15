@@ -22,6 +22,8 @@ The mod JAR is created in `build/libs/`.
 - `/icerush ready` — toggle ready status
 - `/icerush leave` — leave the lobby
 - `/icerush status` — show game status
+- `/icerush stats` — show your persistent statistics
+- `/icerush top` — show the TOP 10 leaderboard
 - `/icerush start` — admin start (requires 80% ready)
 - `/icerush addspot` — admin: save a parking location at your current position
 - `/icerush clearspots` — admin: remove configured parking locations
@@ -29,14 +31,14 @@ The mod JAR is created in `build/libs/`.
 - `/icerush reset` — admin reset
 
 ## Current implementation milestone
-The Fabric server mod currently includes the lobby commands, one-time READY votes, the 80% threshold, countdown cancellation when the roster changes, a generated circular arena and elevated lobby, boat spawning and seat enforcement, per-player speed BossBars with a five-second grace period, six turbo zones, 5% random round events, eight crack positions with warnings, a 25–40 second ride phase, dynamic parking count, 20-second parking, elimination, and survival rounds. Arena setup generates parking positions automatically; `/icerush addspot` can add manual positions.
+The Fabric server mod currently includes the lobby commands, one-time READY votes, the 80% threshold, countdown cancellation when the roster changes, a generated circular arena and elevated lobby, boat spawning and seat enforcement, per-player speed BossBars with a five-second grace period, six turbo zones, 5% random round events, eight crack positions with warnings, a 25–40 second ride phase, dynamic parking count, 20-second parking, elimination, and survival rounds. Arena setup generates parking positions automatically; `/icerush addspot` can add manual positions. Completed-game statistics are stored in `config/icerush-stats.json` and survive server restarts.
 
 ## Setup
 1. Run `/icerush setup` while standing at the intended arena center. This builds the Blue Ice ring and a raised lobby platform.
-2. Add parking positions by standing at each parking center and running `/icerush addspot`. Configure at least `players - 1` positions for the lobby roster.
+2. The arena setup creates 16 candidate parking positions automatically. If you want custom positions, clear them with `/icerush clearspots` and add your own using `/icerush addspot`.
 3. Players run `/icerush join`, then `/icerush ready`. The game starts after at least 80% have voted READY and enough parking positions exist.
 4. Admins can inspect the state with `/icerush status` and stop/reset with `/icerush reset`.
 
-This is an active development build, not yet feature-complete against `ICE RUSH.docx`. The full 100–60% speed-penalty algorithm, animated parking visuals and dedicated parking BossBar, lobby buttons/rules/TOP 10 UI, persistent player statistics and leaderboards, achievements, winner fireworks/music/title effects, and a user-editable configuration file are still pending. The current speed BossBar shows red/yellow/green movement stages; the precise penalty thresholds have not been invented because the specification does not define them.
+This is an active development build, not yet feature-complete against `ICE RUSH.docx`. The full 100–60% speed-penalty algorithm, animated parking visuals, lobby buttons/rules, achievement unlock criteria, winner fireworks/music/title effects, and a user-editable configuration file are still pending. Persistent statistics and a command-based TOP 10 are implemented. The current speed BossBar shows red/yellow/green movement stages; the precise penalty thresholds have not been invented because the specification does not define them.
 
 The legacy datapack remains in `datapack/` as a reference and is not loaded by the Fabric mod.
