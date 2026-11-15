@@ -797,7 +797,7 @@ public final class IceRushGame {
                     participant.turboActive = false;
                 }
             }
-            if (server.getTicks() % 5 != 0) continue;
+            if (roundTicks < config.speedGraceSeconds * 20 || server.getTicks() % 5 != 0) continue;
             Vec3d velocity = boat.getVelocity();
             for (int i = 0; i < turboZones.size(); i++) {
                 if (boat.getPos().squaredDistanceTo(turboZones.get(i)) > 9.0) {
