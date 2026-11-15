@@ -760,7 +760,7 @@ public final class IceRushGame {
         occupiedSpots.clear();
         state = State.RACING;
         timer = ThreadLocalRandom.current().nextInt(config.minRideSeconds * 20, config.maxRideSeconds * 20 + 1);
-        spawnRoundBoats(server);
+        spawnMissingRoundBoats(server);
         setupSpeedBars(server);
         phaseBar.setName(Text.literal("JAZDA — KOLO " + round));
         phaseBar.setColor(BossBar.Color.BLUE);
@@ -1243,6 +1243,49 @@ public final class IceRushGame {
                 boat.setPosition(pos);
                 boat.setVelocity(Vec3d.ZERO);
             }
+            player.teleport(arenaWorld, pos.x, pos.y + 1.0, pos.z, player.getYaw(), 0.0F);
+            player.startRiding(boat, true);
+        }
+    }
+
+    private void spawnMissingRoundBoats(MinecraftServer server) {
+        if (arenaWorld == null || startPositions.isEmpty()) return;
+        List<Vec3d> freeStarts = new ArrayList<>(startPositions);
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            BoatEntity existing = playerBoats.get(participant.id);
+            if (existing == null || existing.isRemoved()) continue;
+            int nearest = -1;
+            double nearestDistance = Double.MAX_VALUE;
+            for (int i = 0; i < freeStarts.size(); i++) {
+                double distance = existing.getPos().squaredDistanceTo(freeStarts.get(i));
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearest = i;
+                }
+            }
+            if (nearest >= 0) freeStarts.remove(nearest);
+        }
+        Collections.shuffle(freeStarts);
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player == null) continue;
+            BoatEntity boat = playerBoats.get(participant.id);
+            if (boat != null && !boat.isRemoved()) {
+                if (player.getVehicle() != boat) player.startRiding(boat, true);
+                continue;
+            }
+            Vec3d pos = freeStarts.isEmpty()
+                ? startPositions.get(ThreadLocalRandom.current().nextInt(startPositions.size()))
+                : freeStarts.remove(0);
+            boat = new BoatEntity(EntityType.BOAT, arenaWorld);
+            boat.setPosition(pos);
+            arenaWorld.spawnEntity(boat);
+            playerBoats.put(participant.id, boat);
+            participant.appliedSpeedScale = 1.0;
+            participant.turboTicks = 0;
+            participant.turboActive = false;
             player.teleport(arenaWorld, pos.x, pos.y + 1.0, pos.z, player.getYaw(), 0.0F);
             player.startRiding(boat, true);
         }
