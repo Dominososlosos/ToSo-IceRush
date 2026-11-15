@@ -255,28 +255,22 @@ public final class IceRushGame {
     private int showStats(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
-        Text message = Text.literal("ICE RUSH ŠTATISTIKY
-")
-            .append("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "
-")
-            .append("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "
-")
-            .append("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "
-")
+        Text message = Text.literal("ICE RUSH ŠTATISTIKY\n")
+            .append("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses + "\n")
+            .append("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses + "\n")
+            .append("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord) + "\n")
             .append("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s"));
         player.sendMessage(message, false);
         return 1;
     }
 
     private int showTop(ServerCommandSource source) {
-        Text message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV
-");
+        Text message = Text.literal("ICE RUSH — TOP 10 PODĽA BODOV\n");
         int rank = 1;
         for (Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry : statsStore.top(10)) {
             ServerPlayerEntity online = source.getServer().getPlayerManager().getPlayer(entry.getKey());
             String name = online == null ? entry.getKey().toString().substring(0, 8) : online.getName().getString();
-            message.append(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")
-");
+            message.append(rank++ + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")\n");
         }
         source.sendFeedback(() -> message, false);
         return 1;
@@ -389,6 +383,7 @@ public final class IceRushGame {
     }
 
     private void startRound(MinecraftServer server) {
+        if (round == 0) resultsCommitted = false;
         round++;
         for (Participant p : participants.values()) {
             p.parked = false;
@@ -433,6 +428,7 @@ public final class IceRushGame {
                 if (boatPosition.squaredDistanceTo(parkingSpots.get(i)) <= PARKING_RADIUS_SQUARED) {
                     participant.parked = true;
                     participant.parkingSpot = i;
+                    participant.parkingTimeTicks = PARKING_TICKS - timer;
                     occupiedSpots.add(i);
                     player.sendMessage(Text.literal("Parkovacie miesto obsadené!").formatted(Formatting.GREEN), true);
                     break;
@@ -446,14 +442,21 @@ public final class IceRushGame {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (participant.parked) {
-                participant.points += 15;
-                if (player != null) player.sendMessage(Text.literal("+15 bodov (parkovanie + prežitie kola). Spolu: " + participant.points).formatted(Formatting.GREEN), false);
+                participant.points += 10;
+                participant.points += 5;
+                IceRushStatsStore.PlayerStats stats = statsStore.get(participant.id);
+                if (participant.parkingTimeTicks > 0 &&
+                    (stats.bestParkingTicks == 0 || participant.parkingTimeTicks < stats.bestParkingTicks)) {
+                    stats.bestParkingTicks = participant.parkingTimeTicks;
+                }
+                if (player != null) player.sendMessage(Text.literal("+10 parkovanie +5 prežitie kola. Spolu: " + participant.points).formatted(Formatting.GREEN), false);
             } else {
                 int placeBeforeElimination = activeCount();
                 if (placeBeforeElimination == 2) participant.points += 60;
                 else if (placeBeforeElimination == 3) participant.points += 40;
                 participant.eliminated = true;
                 if (player != null) {
+                    player.stopRiding();
                     player.changeGameMode(GameMode.SPECTATOR);
                     player.sendMessage(Text.literal("VYPADÁVAŠ! Nenašiel/nenašla si parkovacie miesto. Body: " + participant.points).formatted(Formatting.RED, Formatting.BOLD), false);
                 }
@@ -464,7 +467,7 @@ public final class IceRushGame {
         if (remaining <= 1) {
             declareWinner(server);
         } else {
-            for (Participant p : participants.values()) { p.parked = false; p.parkingSpot = -1; }
+            for (Participant p : participants.values()) { p.parked = false; p.parkingSpot = -1; p.parkingTimeTicks = 0; }
             admitLateSpectators(server);
             round++;
             state = State.RACING;
@@ -502,6 +505,7 @@ public final class IceRushGame {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
             double speed = boat.getVelocity().horizontalLength();
+            statsStore.get(participant.id).speedRecord = Math.max(statsStore.get(participant.id).speedRecord, speed);
             ServerBossBar bar = speedBars.get(participant.id);
             if (bar == null) continue;
             if (speed >= 0.18) {
@@ -694,6 +698,21 @@ public final class IceRushGame {
         } else {
             broadcast(server, Text.literal("ICE RUSH sa skončilo bez víťaza.").formatted(Formatting.RED));
         }
+        commitResults();
+    }
+
+    private void commitResults() {
+        if (resultsCommitted) return;
+        resultsCommitted = true;
+        for (Participant participant : participants.values()) {
+            IceRushStatsStore.PlayerStats stats = statsStore.get(participant.id);
+            stats.gamesPlayed++;
+            stats.points += participant.points;
+            stats.turboBonuses += participant.turboBonuses;
+            if (participant.id.equals(winner)) stats.wins++;
+            else stats.losses++;
+        }
+        statsStore.save();
     }
 
     private void resetGame(MinecraftServer server, boolean adminReset) {
@@ -716,6 +735,7 @@ public final class IceRushGame {
         timer = 0;
         countdownNeedsValidation = false;
         round = 0;
+        resultsCommitted = false;
         winner = null;
         if (!adminReset) broadcast(server, Text.literal("ICE RUSH sa skončilo. Lobby je znovu otvorené.").formatted(Formatting.AQUA));
     }
