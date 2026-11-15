@@ -704,6 +704,7 @@ public final class IceRushGame {
         for (Participant participant : participants.values()) {
             participant.turboTicks = 0;
             participant.turboActive = false;
+            participant.speedPercent = config.minimumSpeedPercent;
             participant.turboZonesUsed.clear();
         }
         roundEvent = ThreadLocalRandom.current().nextInt(100) < config.eventChancePercent
