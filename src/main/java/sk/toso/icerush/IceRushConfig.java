@@ -32,7 +32,7 @@ final class IceRushConfig {
     double parkingRadius = 2.5;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private final Path file = FabricLoader.getInstance().getConfigDir().resolve("icerush.json");
+    private transient final Path file = FabricLoader.getInstance().getConfigDir().resolve("icerush.json");
 
     static IceRushConfig load() {
         IceRushConfig config = new IceRushConfig();
