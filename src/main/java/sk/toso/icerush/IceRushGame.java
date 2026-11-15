@@ -8,6 +8,10 @@ import net.minecraft.entity.boss.ServerBossBar;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.world.World;
+import net.minecraft.util.Identifier;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -215,8 +219,8 @@ public final class IceRushGame {
     }
 
     private int setupArena(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
-        if (arenaWorld != null) {
-            source.sendError(Text.literal("Aréna už bola v tomto behu servera vytvorená."));
+        if (arenaWorld != null || config.arenaConfigured) {
+            source.sendError(Text.literal("Aréna už bola vytvorená a jej poloha je uložená v konfigurácii."));
             return 0;
         }
         if (state != State.WAITING) {
@@ -256,20 +260,13 @@ public final class IceRushGame {
                 }
             }
         }
-        startPositions.clear();
-        parkingSpots.clear();
-        crackPositions.clear();
-        for (int i = 0; i < 8; i++) {
-            double angle = (Math.PI * 2.0 * i) / 8.0;
-            double radius = (config.trackInnerRadius + config.trackOuterRadius) / 2.0;
-            crackPositions.add(new BlockPos((int) Math.round(cx + Math.cos(angle) * radius), cy, (int) Math.round(cz + Math.sin(angle) * radius)));
-        }
-        for (int i = 0; i < config.maxPlayers; i++) {
-            double angle = (Math.PI * 2.0 * i) / config.maxPlayers;
-            Vec3d position = new Vec3d(cx + Math.cos(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5, cy + 1.0, cz + Math.sin(angle) * ((config.trackInnerRadius + config.trackOuterRadius) / 2.0) + 0.5);
-            startPositions.add(position);
-            parkingSpots.add(position);
-        }
+        initializeArenaPositions();
+        config.arenaConfigured = true;
+        config.arenaDimension = arenaWorld.getRegistryKey().getValue().toString();
+        config.arenaX = arenaCenter.getX();
+        config.arenaY = arenaCenter.getY();
+        config.arenaZ = arenaCenter.getZ();
+        config.save();
         for (Participant participant : participants.values()) {
             ServerPlayerEntity player = source.getServer().getPlayerManager().getPlayer(participant.id);
             if (player != null) teleportToLobby(player);
@@ -277,6 +274,46 @@ public final class IceRushGame {
         admin.sendMessage(Text.literal("ICE RUSH aréna vytvorená. Priemer: " + (config.trackOuterRadius * 2.0) + " blokov, šírka približne " + (config.trackOuterRadius - config.trackInnerRadius) + "; lobby: " + config.lobbyHeight + " blokov nad dráhou.").formatted(Formatting.GREEN), false);
         tryStartCountdown(source.getServer());
         return 1;
+    }
+
+    void onServerStarted(MinecraftServer server) {
+        if (!config.arenaConfigured || config.arenaDimension.isBlank()) return;
+        Identifier dimensionId = Identifier.tryParse(config.arenaDimension);
+        if (dimensionId == null) {
+            IceRushMod.LOGGER.error("Invalid saved ICE RUSH dimension id: {}", config.arenaDimension);
+            return;
+        }
+        RegistryKey<World> worldKey = RegistryKey.of(RegistryKeys.WORLD, dimensionId);
+        ServerWorld savedWorld = server.getWorld(worldKey);
+        if (savedWorld == null) {
+            IceRushMod.LOGGER.error("Saved ICE RUSH arena dimension {} is unavailable", config.arenaDimension);
+            return;
+        }
+        arenaWorld = savedWorld;
+        arenaCenter = new BlockPos(config.arenaX, config.arenaY, config.arenaZ);
+        lobbyPosition = new Vec3d(config.arenaX + 0.5, config.arenaY + config.lobbyHeight, config.arenaZ + 0.5);
+        initializeArenaPositions();
+        IceRushMod.LOGGER.info("Restored ICE RUSH arena at {} {} {} in {}", config.arenaX, config.arenaY, config.arenaZ, config.arenaDimension);
+    }
+
+    private void initializeArenaPositions() {
+        int cx = arenaCenter.getX();
+        int cy = arenaCenter.getY() - 1;
+        int cz = arenaCenter.getZ();
+        startPositions.clear();
+        parkingSpots.clear();
+        crackPositions.clear();
+        double trackRadius = (config.trackInnerRadius + config.trackOuterRadius) / 2.0;
+        for (int i = 0; i < 8; i++) {
+            double angle = (Math.PI * 2.0 * i) / 8.0;
+            crackPositions.add(new BlockPos((int) Math.round(cx + Math.cos(angle) * trackRadius), cy, (int) Math.round(cz + Math.sin(angle) * trackRadius)));
+        }
+        for (int i = 0; i < config.maxPlayers; i++) {
+            double angle = (Math.PI * 2.0 * i) / config.maxPlayers;
+            Vec3d position = new Vec3d(cx + Math.cos(angle) * trackRadius + 0.5, cy + 1.0, cz + Math.sin(angle) * trackRadius + 0.5);
+            startPositions.add(position);
+            parkingSpots.add(position);
+        }
     }
 
     private int clearSpots(ServerCommandSource source) {
