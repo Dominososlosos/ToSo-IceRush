@@ -7,6 +7,8 @@ import net.minecraft.entity.boss.BossBar;
 import net.minecraft.entity.boss.ServerBossBar;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.vehicle.BoatEntity;
+import net.minecraft.entity.decoration.InteractionEntity;
+import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -23,7 +25,9 @@ import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
 import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
 import net.minecraft.network.packet.s2c.play.TitleFadeS2CPacket;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.ActionResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.BlockState;
@@ -127,6 +131,8 @@ public final class IceRushGame {
                 .executes(ctx -> defaultSpots(ctx.getSource())))
             .then(CommandManager.literal("setup").requires(s -> s.hasPermissionLevel(2))
                 .executes(ctx -> setupArena(ctx.getSource())))
+            .then(CommandManager.literal("lobbysetup").requires(s -> s.hasPermissionLevel(2))
+                .executes(ctx -> setupLobbyControls(ctx.getSource())))
         );
     }
 
@@ -282,13 +288,16 @@ public final class IceRushGame {
         lobbyPosition = new Vec3d(cx + 0.5, lobbyY + 1.0, cz + 0.5);
         for (int x = -8; x <= 8; x++) {
             for (int z = -8; z <= 8; z++) {
-                arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY, cz + z), Blocks.SPRUCE_PLANKS.getDefaultState());
+                BlockState lobbyFloor = Math.abs(x) <= 5 && Math.abs(z) <= 5
+                    ? Blocks.GLASS.getDefaultState() : Blocks.SPRUCE_PLANKS.getDefaultState();
+                arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY, cz + z), lobbyFloor);
                 if (Math.abs(x) == 8 || Math.abs(z) == 8) {
                     arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 1, cz + z), Blocks.SPRUCE_FENCE.getDefaultState());
                 }
             }
         }
         initializeArenaPositions();
+        buildLobbyControls();
         config.arenaConfigured = true;
         config.arenaDimension = arenaWorld.getRegistryKey().getValue().toString();
         config.arenaX = arenaCenter.getX();
@@ -322,6 +331,7 @@ public final class IceRushGame {
         arenaCenter = new BlockPos(config.arenaX, config.arenaY, config.arenaZ);
         lobbyPosition = new Vec3d(config.arenaX + 0.5, config.arenaY + config.arenaLobbyHeight, config.arenaZ + 0.5);
         initializeArenaPositions();
+        buildLobbyControls();
         IceRushMod.LOGGER.info("Restored ICE RUSH arena at {} {} {} in {}", config.arenaX, config.arenaY, config.arenaZ, config.arenaDimension);
     }
 
@@ -357,6 +367,78 @@ public final class IceRushGame {
                     parkingSpots.add(new Vec3d(coordinates[0], coordinates[1], coordinates[2]));
                 }
             }
+        }
+    }
+
+    private int setupLobbyControls(ServerCommandSource source) {
+        if (arenaWorld == null || lobbyPosition == null) {
+            source.sendError(Text.literal("Najprv vytvor alebo obnov arénu príkazom /icerush setup."));
+            return 0;
+        }
+        int before = arenaWorld.getEntitiesByClass(InteractionEntity.class,
+            new Box(arenaCenter.getX() - 10, lobbyPosition.y - 2, arenaCenter.getZ() - 2,
+                    arenaCenter.getX() + 10, lobbyPosition.y + 5, arenaCenter.getZ() + 10),
+            entity -> entity.getCommandTags().contains("icerush_button_join")).size();
+        buildLobbyControls();
+        source.sendFeedback(() -> Text.literal(before > 0 ? "Lobby ovládanie je už vytvorené a bolo skontrolované." : "Lobby ovládacie panely boli vytvorené."), true);
+        return 1;
+    }
+
+    private void buildLobbyControls() {
+        if (arenaWorld == null || arenaCenter == null) return;
+        int lobbyY = arenaCenter.getY() - 1 + config.arenaLobbyHeight;
+        String[] actions = {"join", "ready", "rules", "top", "stats", "lastwinner"};
+        String[] labels = {"JOIN", "READY", "PRAVIDLÁ", "TOP 10", "ŠTATISTIKY", "POSLEDNÝ VÍŤAZ"};
+        net.minecraft.block.Block[] colors = {Blocks.LIME_CARPET, Blocks.GREEN_CARPET, Blocks.BLUE_CARPET,
+            Blocks.YELLOW_CARPET, Blocks.PURPLE_CARPET, Blocks.CYAN_CARPET};
+        Box searchBox = new Box(arenaCenter.getX() - 10, lobbyY - 1, arenaCenter.getZ() + 2,
+            arenaCenter.getX() + 10, lobbyY + 5, arenaCenter.getZ() + 9);
+        for (int i = 0; i < actions.length; i++) {
+            String tag = "icerush_button_" + actions[i];
+            boolean exists = !arenaWorld.getEntitiesByClass(InteractionEntity.class, searchBox,
+                entity -> entity.getCommandTags().contains(tag)).isEmpty();
+            if (exists) continue;
+            int x = arenaCenter.getX() - 5 + i * 2;
+            int z = arenaCenter.getZ() + 5;
+            BlockPos pad = new BlockPos(x, lobbyY, z);
+            arenaWorld.setBlockState(pad, colors[i].getDefaultState());
+            InteractionEntity button = new InteractionEntity(EntityType.INTERACTION, arenaWorld);
+            button.setPosition(x + 0.5, lobbyY + 1.0, z + 0.5);
+            button.setNoGravity(true);
+            button.addCommandTag(tag);
+            arenaWorld.spawnEntity(button);
+            ArmorStandEntity label = new ArmorStandEntity(EntityType.ARMOR_STAND, arenaWorld);
+            label.setPosition(x + 0.5, lobbyY + 1.35, z + 0.5);
+            label.setCustomName(Text.literal(labels[i]).formatted(Formatting.BOLD, Formatting.WHITE));
+            label.setCustomNameVisible(true);
+            label.setInvisible(true);
+            label.setNoGravity(true);
+            label.addCommandTag("icerush_lobby_label_" + actions[i]);
+            arenaWorld.spawnEntity(label);
+        }
+    }
+
+    public boolean isLobbyButton(Entity entity) {
+        return entity.getCommandTags().stream().anyMatch(tag -> tag.startsWith("icerush_button_"));
+    }
+
+    public void handleLobbyButton(ServerPlayerEntity player, Entity entity) {
+        String action = entity.getCommandTags().stream()
+            .filter(tag -> tag.startsWith("icerush_button_"))
+            .map(tag -> tag.substring("icerush_button_".length())).findFirst().orElse("");
+        ServerCommandSource source = player.getCommandSource();
+        try {
+            switch (action) {
+                case "join" -> join(source);
+                case "ready" -> ready(source);
+                case "rules" -> showRules(source);
+                case "top" -> showTop(source);
+                case "stats" -> showStats(source);
+                case "lastwinner" -> showLastWinner(source);
+                default -> player.sendMessage(Text.literal("Neznáme lobby tlačidlo."), false);
+            }
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException exception) {
+            player.sendMessage(Text.literal("Tento úkon sa nepodarilo vykonať." ).formatted(Formatting.RED), false);
         }
     }
 
