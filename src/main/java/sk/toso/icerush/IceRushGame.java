@@ -58,6 +58,7 @@ public final class IceRushGame {
     private String roundEvent = "NONE";
     private ServerWorld arenaWorld;
     private BlockPos arenaCenter;
+    private Vec3d lobbyPosition;
     private boolean countdownNeedsValidation;
     private State state = State.WAITING;
     private int timer;
@@ -215,7 +216,7 @@ public final class IceRushGame {
             }
         }
         // Vyvýšená lobby plošina 80 blokov nad úrovňou dráhy.
-        int lobbyY = cy + 80;
+        int lobbyY = cy + 80;\n        lobbyPosition = new Vec3d(cx + 0.5, lobbyY + 1.0, cz + 0.5);
         for (int x = -8; x <= 8; x++) {
             for (int z = -8; z <= 8; z++) {
                 arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY, cz + z), Blocks.SPRUCE_PLANKS.getDefaultState());
@@ -657,12 +658,12 @@ public final class IceRushGame {
     private void resetGame(MinecraftServer server, boolean adminReset) {
         for (Participant participant : participants.values()) {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
-            if (player != null) player.changeGameMode(GameMode.ADVENTURE);
+            if (player != null) returnToLobby(player);
         }
         participants.clear();
         for (UUID id : lateSpectators) {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
-            if (player != null) player.changeGameMode(GameMode.ADVENTURE);
+            if (player != null) returnToLobby(player);
         }
         lateSpectators.clear();
         occupiedSpots.clear();
@@ -677,7 +678,7 @@ public final class IceRushGame {
         if (!adminReset) broadcast(server, Text.literal("ICE RUSH sa skončilo. Lobby je znovu otvorené.").formatted(Formatting.AQUA));
     }
 
-    private int activeCount() {
+    private void teleportToLobby(ServerPlayerEntity player) {\n        if (arenaWorld == null || lobbyPosition == null) return;\n        player.teleport(arenaWorld, lobbyPosition.x, lobbyPosition.y, lobbyPosition.z, player.getYaw(), 0.0F);\n    }\n\n    private void returnToLobby(ServerPlayerEntity player) {\n        player.stopRiding();\n        teleportToLobby(player);\n        player.changeGameMode(GameMode.ADVENTURE);\n    }\n\n    private int activeCount() {
         return (int) participants.values().stream().filter(p -> !p.eliminated).count();
     }
 
