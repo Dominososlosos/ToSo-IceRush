@@ -18,6 +18,7 @@ import net.minecraft.block.Blocks;
 import net.minecraft.world.GameMode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -141,6 +142,10 @@ public final class IceRushGame {
     }
 
     private int start(ServerCommandSource source) {
+        if (arenaWorld == null || startPositions.isEmpty()) {
+            source.sendError(Text.literal("Najprv vytvor arénu príkazom /icerush setup."));
+            return 0;
+        }
         if (state != State.WAITING) {
             source.sendError(Text.literal("Hra už prebieha."));
             return 0;
@@ -202,9 +207,12 @@ public final class IceRushGame {
             }
         }
         startPositions.clear();
+        parkingSpots.clear();
         for (int i = 0; i < MAX_PLAYERS; i++) {
             double angle = (Math.PI * 2.0 * i) / MAX_PLAYERS;
-            startPositions.add(new Vec3d(cx + Math.cos(angle) * 42.0 + 0.5, cy + 1.0, cz + Math.sin(angle) * 42.0 + 0.5));
+            Vec3d position = new Vec3d(cx + Math.cos(angle) * 42.0 + 0.5, cy + 1.0, cz + Math.sin(angle) * 42.0 + 0.5);
+            startPositions.add(position);
+            parkingSpots.add(position);
         }
         admin.sendMessage(Text.literal("ICE RUSH aréna vytvorená. Dráha: priemer 90, šírka 7; lobby je 80 blokov nad ňou.").formatted(Formatting.GREEN), false);
         return 1;
@@ -254,7 +262,7 @@ public final class IceRushGame {
     }
 
     private void tryStartCountdown(MinecraftServer server) {
-        if (state != State.WAITING || participants.size() < MIN_PLAYERS) return;
+        if (state != State.WAITING || participants.size() < MIN_PLAYERS || arenaWorld == null) return;
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
         int required = (int) Math.ceil(participants.size() * 0.80);
         if (readyCount >= required && parkingSpots.size() >= participants.size() - 1) beginCountdown(server);
@@ -281,6 +289,12 @@ public final class IceRushGame {
     public void tick(MinecraftServer server) {
         if (state == State.WAITING) return;
         if (state == State.COUNTDOWN) {
+            if (arenaWorld == null) {
+                state = State.WAITING;
+                timer = 0;
+                broadcast(server, Text.literal("Odpočet zrušený — aréna nie je nastavená.").formatted(Formatting.RED));
+                return;
+            }
             if (countdownNeedsValidation) {
                 countdownNeedsValidation = false;
                 recheckCountdown(server);
@@ -328,6 +342,7 @@ public final class IceRushGame {
     }
 
     private void beginParking(MinecraftServer server) {
+        Collections.shuffle(parkingSpots);
         state = State.PARKING;
         timer = PARKING_TICKS;
         occupiedSpots.clear();
