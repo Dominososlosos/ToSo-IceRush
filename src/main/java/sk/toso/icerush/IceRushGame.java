@@ -574,7 +574,15 @@ public final class IceRushGame {
     private void updateParking(MinecraftServer server) {
         for (Participant participant : participants.values()) {
             if (participant.parked) {
-                if (participant.parkingSpot >= 0) occupiedSpots.add(participant.parkingSpot);
+                if (participant.parkingSpot >= 0) {
+                    occupiedSpots.add(participant.parkingSpot);
+                    BoatEntity parkedBoat = playerBoats.get(participant.id);
+                    if (parkedBoat != null && !parkedBoat.isRemoved()) {
+                        Vec3d lockedPosition = parkingSpots.get(participant.parkingSpot);
+                        parkedBoat.setPosition(lockedPosition);
+                        parkedBoat.setVelocity(Vec3d.ZERO);
+                    }
+                }
                 continue;
             }
             if (participant.eliminated) continue;
