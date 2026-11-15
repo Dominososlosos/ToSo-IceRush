@@ -3,14 +3,18 @@ package sk.toso.icerush;
 import com.mojang.brigadier.CommandDispatcher;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.block.Blocks;
 import net.minecraft.world.GameMode;
 
 import java.util.ArrayList;
@@ -38,6 +42,11 @@ public final class IceRushGame {
     private final List<Vec3d> parkingSpots = new ArrayList<>();
     private final Set<Integer> occupiedSpots = new HashSet<>();
     private final Set<UUID> lateSpectators = new HashSet<>();
+    private final Map<UUID, BoatEntity> playerBoats = new LinkedHashMap<>();
+    private final List<Vec3d> startPositions = new ArrayList<>();
+    private ServerWorld arenaWorld;
+    private BlockPos arenaCenter;
+    private boolean countdownNeedsValidation;
     private State state = State.WAITING;
     private int timer;
     private int round;
@@ -72,6 +81,8 @@ public final class IceRushGame {
                 .executes(ctx -> addSpot(ctx.getSource())))
             .then(CommandManager.literal("clearspots").requires(s -> s.hasPermissionLevel(2))
                 .executes(ctx -> clearSpots(ctx.getSource())))
+            .then(CommandManager.literal("setup").requires(s -> s.hasPermissionLevel(2))
+                .executes(ctx -> setupArena(ctx.getSource())))
         );
     }
 
@@ -97,8 +108,8 @@ public final class IceRushGame {
     }
 
     private int leave(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
-        if (state != State.WAITING) {
-            source.sendError(Text.literal("Počas hry už nemôžeš opustiť zostavu. Ak odídeš zo servera, budeš vyradený."));
+        if (state != State.WAITING && state != State.COUNTDOWN) {
+            source.sendError(Text.literal("Počas prebiehajúcej jazdy už nemôžeš opustiť zostavu."));
             return 0;
         }
         ServerPlayerEntity player = source.getPlayerOrThrow();
@@ -108,6 +119,7 @@ public final class IceRushGame {
             return 0;
         }
         broadcast(source.getServer(), Text.literal(player.getName().getString() + " opustil lobby.").formatted(Formatting.GRAY));
+        if (state == State.COUNTDOWN) recheckCountdown(source.getServer());
         return 1;
     }
 
@@ -118,8 +130,12 @@ public final class IceRushGame {
             player.sendMessage(Text.literal("Najprv sa prihlás do lobby: /icerush join").formatted(Formatting.YELLOW), false);
             return 0;
         }
-        participant.ready = !participant.ready;
-        broadcast(source.getServer(), Text.literal(player.getName().getString() + (participant.ready ? " je pripravený." : " už nie je pripravený.")).formatted(Formatting.AQUA));
+        if (participant.ready) {
+            player.sendMessage(Text.literal("Svoj hlas READY už máš zaznamenaný.").formatted(Formatting.YELLOW), false);
+            return 0;
+        }
+        participant.ready = true;
+        broadcast(source.getServer(), Text.literal(player.getName().getString() + " je pripravený.").formatted(Formatting.AQUA));
         tryStartCountdown(source.getServer());
         return 1;
     }
@@ -158,6 +174,42 @@ public final class IceRushGame {
         return 1;
     }
 
+    private int setupArena(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        if (state != State.WAITING) {
+            source.sendError(Text.literal("Arénu možno vytvoriť iba v lobby."));
+            return 0;
+        }
+        ServerPlayerEntity admin = source.getPlayerOrThrow();
+        arenaWorld = admin.getServerWorld();
+        arenaCenter = admin.getBlockPos();
+        int cx = arenaCenter.getX();
+        int cy = arenaCenter.getY() - 1;
+        int cz = arenaCenter.getZ();
+        // Jednorazová kruhová dráha: vonkajší priemer 90 blokov, šírka 7 blokov.
+        for (int x = -45; x <= 45; x++) {
+            for (int z = -45; z <= 45; z++) {
+                double radius = Math.sqrt((double) x * x + (double) z * z);
+                if (radius >= 38.5 && radius <= 45.0) {
+                    arenaWorld.setBlockState(new BlockPos(cx + x, cy, cz + z), Blocks.BLUE_ICE.getDefaultState());
+                }
+            }
+        }
+        // Vyvýšená lobby plošina 80 blokov nad úrovňou dráhy.
+        int lobbyY = cy + 80;
+        for (int x = -8; x <= 8; x++) {
+            for (int z = -8; z <= 8; z++) {
+                arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY, cz + z), Blocks.SPRUCE_PLANKS.getDefaultState());
+            }
+        }
+        startPositions.clear();
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            double angle = (Math.PI * 2.0 * i) / MAX_PLAYERS;
+            startPositions.add(new Vec3d(cx + Math.cos(angle) * 42.0 + 0.5, cy + 1.0, cz + Math.sin(angle) * 42.0 + 0.5));
+        }
+        admin.sendMessage(Text.literal("ICE RUSH aréna vytvorená. Dráha: priemer 90, šírka 7; lobby je 80 blokov nad ňou.").formatted(Formatting.GREEN), false);
+        return 1;
+    }
+
     private int clearSpots(ServerCommandSource source) {
         if (state != State.WAITING) {
             source.sendError(Text.literal("Parkovacie miesta možno meniť iba v lobby."));
@@ -191,8 +243,9 @@ public final class IceRushGame {
     }
 
     public void onPlayerDisconnect(UUID playerId) {
-        if (state == State.WAITING) {
+        if (state == State.WAITING || state == State.COUNTDOWN) {
             participants.remove(playerId);
+            if (state == State.COUNTDOWN) countdownNeedsValidation = true;
         } else {
             Participant participant = participants.get(playerId);
             if (participant != null) participant.eliminated = true;
@@ -207,6 +260,18 @@ public final class IceRushGame {
         if (readyCount >= required && parkingSpots.size() >= participants.size() - 1) beginCountdown(server);
     }
 
+    private void recheckCountdown(MinecraftServer server) {
+        if (state != State.COUNTDOWN) return;
+        int players = participants.size();
+        long readyCount = participants.values().stream().filter(p -> p.ready).count();
+        int required = (int) Math.ceil(players * 0.80);
+        if (players < MIN_PLAYERS || readyCount < required || parkingSpots.size() < players - 1) {
+            state = State.WAITING;
+            timer = 0;
+            broadcast(server, Text.literal("Odpočet zrušený — podmienka 80 % READY alebo počet hráčov už nie je splnený.").formatted(Formatting.RED));
+        }
+    }
+
     private void beginCountdown(MinecraftServer server) {
         state = State.COUNTDOWN;
         timer = COUNTDOWN_TICKS;
@@ -216,6 +281,11 @@ public final class IceRushGame {
     public void tick(MinecraftServer server) {
         if (state == State.WAITING) return;
         if (state == State.COUNTDOWN) {
+            if (countdownNeedsValidation) {
+                countdownNeedsValidation = false;
+                recheckCountdown(server);
+                if (state != State.COUNTDOWN) return;
+            }
             timer--;
             if (timer == 40 || timer == 20 || timer == 0) {
                 String label = timer == 40 ? "3" : timer == 20 ? "2" : "1";
@@ -225,6 +295,7 @@ public final class IceRushGame {
             return;
         }
         if (state == State.RACING) {
+            enforceBoatSeats(server);
             timer--;
             if (timer <= 0) beginParking(server);
             return;
@@ -232,7 +303,8 @@ public final class IceRushGame {
         if (state == State.PARKING) {
             updateParking(server);
             timer--;
-            if (timer <= 0) finishParking(server);
+            int requiredSpots = Math.max(0, activeCount() - 1);
+            if (occupiedSpots.size() >= requiredSpots || timer <= 0) finishParking(server);
             return;
         }
         if (state == State.FINISHED) {
@@ -251,6 +323,7 @@ public final class IceRushGame {
         occupiedSpots.clear();
         state = State.RACING;
         timer = ThreadLocalRandom.current().nextInt(MIN_RIDE_TICKS, MAX_RIDE_TICKS + 1);
+        spawnRoundBoats(server);
         broadcast(server, Text.literal("ŠTART! Kolo " + round + " — jazda!").formatted(Formatting.GREEN, Formatting.BOLD));
     }
 
@@ -275,7 +348,7 @@ public final class IceRushGame {
             Entity vehicle = player.getVehicle();
             if (!(vehicle instanceof BoatEntity)) continue;
             Vec3d boatPosition = vehicle.getPos();
-            for (int i = 0; i < parkingSpots.size(); i++) {
+            for (int i = 0; i < Math.min(parkingSpots.size(), Math.max(0, activeCount() - 1)); i++) {
                 if (occupiedSpots.contains(i)) continue;
                 if (boatPosition.squaredDistanceTo(parkingSpots.get(i)) <= PARKING_RADIUS_SQUARED) {
                     participant.parked = true;
@@ -312,9 +385,60 @@ public final class IceRushGame {
             declareWinner(server);
         } else {
             for (Participant p : participants.values()) { p.parked = false; p.parkingSpot = -1; }
+            admitLateSpectators(server);
             state = State.RACING;
             timer = ThreadLocalRandom.current().nextInt(MIN_RIDE_TICKS, MAX_RIDE_TICKS + 1);
-            broadcast(server, Text.literal("Kolo " + (round + 1) + " začína! Zostáva hráčov: " + remaining).formatted(Formatting.AQUA, Formatting.BOLD));
+            spawnRoundBoats(server);
+            broadcast(server, Text.literal("Kolo " + (round + 1) + " začína! Zostáva hráčov: " + activeCount()).formatted(Formatting.AQUA, Formatting.BOLD));
+        }
+    }
+
+    private void admitLateSpectators(MinecraftServer server) {
+        if (lateSpectators.isEmpty() || participants.size() >= MAX_PLAYERS) return;
+        for (UUID id : new ArrayList<>(lateSpectators)) {
+            if (participants.size() >= MAX_PLAYERS) break;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
+            if (player == null) continue;
+            participants.put(id, new Participant(id));
+            lateSpectators.remove(id);
+            player.changeGameMode(GameMode.SURVIVAL);
+            player.sendMessage(Text.literal("Pripojil si sa do ďalšieho kola ICE RUSH!").formatted(Formatting.GREEN), false);
+        }
+    }
+
+    private void spawnRoundBoats(MinecraftServer server) {
+        if (arenaWorld == null || startPositions.isEmpty()) return;
+        int index = 0;
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player == null) continue;
+            Vec3d pos = startPositions.get(index++ % startPositions.size());
+            BoatEntity boat = playerBoats.get(participant.id);
+            if (boat == null || boat.isRemoved()) {
+                boat = new BoatEntity(EntityType.OAK_BOAT, arenaWorld);
+                boat.setPosition(pos);
+                arenaWorld.spawnEntity(boat);
+                playerBoats.put(participant.id, boat);
+            } else {
+                boat.setPosition(pos);
+                boat.setVelocity(Vec3d.ZERO);
+            }
+            if (player.getServerWorld() != arenaWorld) {
+                player.teleport(arenaWorld, pos.x, pos.y + 1.0, pos.z, Set.of(), player.getYaw(), 0.0F, true);
+            }
+            player.startRiding(boat, true);
+        }
+    }
+
+    private void enforceBoatSeats(MinecraftServer server) {
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            BoatEntity boat = playerBoats.get(participant.id);
+            if (player != null && boat != null && !boat.isRemoved() && player.getVehicle() != boat) {
+                player.startRiding(boat, true);
+            }
         }
     }
 
@@ -346,8 +470,11 @@ public final class IceRushGame {
         }
         lateSpectators.clear();
         occupiedSpots.clear();
+        for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.discard();
+        playerBoats.clear();
         state = State.WAITING;
         timer = 0;
+        countdownNeedsValidation = false;
         round = 0;
         winner = null;
         if (!adminReset) broadcast(server, Text.literal("ICE RUSH sa skončilo. Lobby je znovu otvorené.").formatted(Formatting.AQUA));
