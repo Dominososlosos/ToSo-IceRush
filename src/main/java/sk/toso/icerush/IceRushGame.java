@@ -96,6 +96,7 @@ public final class IceRushGame {
             .then(CommandManager.literal("stats").executes(ctx -> showStats(ctx.getSource())))
             .then(CommandManager.literal("top").executes(ctx -> showTop(ctx.getSource())))
             .then(CommandManager.literal("achievements").executes(ctx -> showAchievements(ctx.getSource())))
+            .then(CommandManager.literal("lastwinner").executes(ctx -> showLastWinner(ctx.getSource())))
             .then(CommandManager.literal("start").requires(s -> s.hasPermissionLevel(2))
                 .executes(ctx -> start(ctx.getSource())))
             .then(CommandManager.literal("reset").requires(s -> s.hasPermissionLevel(2))
@@ -286,6 +287,11 @@ public final class IceRushGame {
 "));
         }
         source.sendFeedback(() -> message, false);
+        return 1;
+    }
+
+    private int showLastWinner(ServerCommandSource source) {
+        source.sendFeedback(() -> Text.literal("Posledný víťaz ICE RUSH: " + statsStore.lastWinner()), false);
         return 1;
     }
 
@@ -831,6 +837,9 @@ public final class IceRushGame {
             if (participant.id.equals(winner)) {
                 stats.wins++;
                 if (!stats.achievements.contains("First Win")) stats.achievements.add("First Win");
+                ServerPlayerEntity winnerPlayer = server.getPlayerManager().getPlayer(winner);
+                String winnerName = winnerPlayer == null ? (stats.playerName.isBlank() ? winner.toString().substring(0, 8) : stats.playerName) : winnerPlayer.getName().getString();
+                statsStore.setLastWinner(winnerName);
             } else stats.losses++;
         }
         statsStore.save();
