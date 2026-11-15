@@ -723,6 +723,10 @@ public final class IceRushGame {
                 ServerBossBar speedBar = speedBars.remove(participant.id);
                 if (speedBar != null) speedBar.clearPlayers();
                 phaseBar.removePlayer(player);
+                if (arenaWorld != null) {
+                    arenaWorld.spawnParticles(ParticleTypes.CLOUD, player.getX(), player.getY() + 0.5, player.getZ(), 24, 0.5, 0.4, 0.5, 0.03);
+                    arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0F, 0.7F);
+                }
                 player.changeGameMode(GameMode.SPECTATOR);
                 player.sendMessage(Text.literal("VYPADÁVAŠ! Prepadol si sa cez prasknutý ľad.").formatted(Formatting.RED, Formatting.BOLD), false);
             }
