@@ -420,6 +420,7 @@ public final class IceRushGame {
                 InteractionEntity button = new InteractionEntity(EntityType.INTERACTION, arenaWorld);
                 button.setPosition(x + 0.5, lobbyY + 1.0, z + 0.5);
                 button.setNoGravity(true);
+                button.setInvulnerable(true);
                 button.addCommandTag(tag);
                 arenaWorld.spawnEntity(button);
             }
