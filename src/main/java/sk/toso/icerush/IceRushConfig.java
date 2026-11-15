@@ -30,6 +30,11 @@ final class IceRushConfig {
     int minimumSpeedPercent = 60;
     double speedReference = 0.30;
     double parkingRadius = 2.5;
+    boolean arenaConfigured = false;
+    String arenaDimension = "";
+    int arenaX;
+    int arenaY;
+    int arenaZ;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private transient final Path file = FabricLoader.getInstance().getConfigDir().resolve("icerush.json");
@@ -75,6 +80,11 @@ final class IceRushConfig {
         minimumSpeedPercent = loaded.minimumSpeedPercent;
         speedReference = loaded.speedReference;
         parkingRadius = loaded.parkingRadius;
+        arenaConfigured = loaded.arenaConfigured;
+        arenaDimension = loaded.arenaDimension == null ? "" : loaded.arenaDimension;
+        arenaX = loaded.arenaX;
+        arenaY = loaded.arenaY;
+        arenaZ = loaded.arenaZ;
     }
 
     private void validate() {
@@ -102,7 +112,7 @@ final class IceRushConfig {
         save();
     }
 
-    private void save() {
+    void save() {
         try {
             Files.createDirectories(file.getParent());
             try (Writer writer = Files.newBufferedWriter(file)) {
