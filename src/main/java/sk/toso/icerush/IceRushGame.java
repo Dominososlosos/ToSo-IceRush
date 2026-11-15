@@ -144,6 +144,10 @@ public final class IceRushGame {
             player.sendMessage(Text.literal("Nie si prihlásený do ICE RUSH.").formatted(Formatting.YELLOW), false);
             return 0;
         }
+        BoatEntity leavingBoat = playerBoats.remove(player.getUuid());
+        if (leavingBoat != null && !leavingBoat.isRemoved()) leavingBoat.discard();
+        player.stopRiding();
+        returnToLobby(player);
         broadcast(source.getServer(), Text.literal(player.getName().getString() + " opustil lobby.").formatted(Formatting.GRAY));
         if (state == State.COUNTDOWN) recheckCountdown(source.getServer());
         return 1;
@@ -349,6 +353,15 @@ public final class IceRushGame {
         if (players < config.minPlayers || readyCount < required || parkingSpots.size() < players - 1) {
             state = State.WAITING;
             timer = 0;
+            boatsLocked = false;
+            lobbyCountdown = false;
+            for (BoatEntity boat : playerBoats.values()) if (!boat.isRemoved()) boat.discard();
+            playerBoats.clear();
+            for (Participant participant : participants.values()) {
+                ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+                if (player != null) returnToLobby(player);
+            }
+            phaseBar.clearPlayers();
             broadcast(server, Text.literal("Odpočet zrušený — podmienka 80 % READY alebo počet hráčov už nie je splnený.").formatted(Formatting.RED));
         }
     }
