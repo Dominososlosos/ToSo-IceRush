@@ -4,10 +4,10 @@ This checklist is for the first real Minecraft server test. It is a test plan, n
 
 ## Test environment
 
-- [ ] Minecraft Java 1.21.1
+- [ ] Minecraft Java 1.20.1
 - [ ] Fabric Loader 0.19.1
-- [ ] Fabric API 0.116.18+1.21.1
-- [ ] Java 21
+- [ ] Fabric API 0.92.7+1.20.1
+- [ ] Java 17
 - [ ] Dedicated test world and a backup before arena generation
 - [ ] At least 2 accounts for the first match; up to 16 for load testing
 
