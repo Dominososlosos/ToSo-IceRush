@@ -72,6 +72,7 @@ jobs:
           fi
           grep -q "ICE RUSH initialized" logs/latest.log
           grep -q "Stav: WAITING" logs/latest.log
+          if grep -q 'Expected whitespace to end one argument' logs/latest.log; then echo 'Scoreboard command parsing failed'; cat logs/latest.log; exit 1; fi
           test -f config/icerush.json
   multiplayer-integration-test:
     needs: [build, server-smoke-test]
@@ -155,6 +156,7 @@ jobs:
           cd ..
           node tests/multiplayer-smoke.js
           grep -q 'ICE RUSH initialized' server/logs/latest.log
+          if grep -q 'Expected whitespace to end one argument' server/logs/latest.log; then echo 'Scoreboard command parsing failed'; cat server/logs/latest.log; exit 1; fi
           test -f server/config/multiplayer-test-result.txt
           grep -q 'IceRushAdmin' server/config/icerush-last-winner.txt
           grep -q '"gamesPlayed": 1' server/config/icerush-stats.json
@@ -242,6 +244,7 @@ jobs:
           cd ..
           node tests/multiplayer-16-smoke.js
           grep -q 'ICE RUSH initialized' server/logs/latest.log
+          if grep -q 'Expected whitespace to end one argument' server/logs/latest.log; then echo 'Scoreboard command parsing failed'; cat server/logs/latest.log; exit 1; fi
           test -f server/config/multiplayer-16-test-result.txt
           grep -q 'PASS: 16 competitors joined' server/config/multiplayer-16-test-result.txt
           grep -q '"gamesPlayed": 1' server/config/icerush-stats.json
