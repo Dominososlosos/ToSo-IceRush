@@ -36,10 +36,17 @@ function waitFor(bot, pattern, timeout = TIMEOUT) {
 }
 
 async function spawned(bot, name) {
-  await Promise.race([
-    new Promise(resolve => bot.once('spawn', resolve)),
-    new Promise((_, reject) => setTimeout(() => reject(new Error(name + ' failed to spawn')), TIMEOUT))
-  ]);
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      bot.off('spawn', onSpawn);
+      reject(new Error(name + ' failed to spawn'));
+    }, TIMEOUT);
+    const onSpawn = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    bot.once('spawn', onSpawn);
+  });
 }
 
 async function main() {
@@ -48,31 +55,47 @@ async function main() {
   try {
     admin = connect('IceRushAdmin');
     await spawned(admin, 'Admin');
+    const center = {
+      x: Math.floor(admin.entity.position.x),
+      y: Math.floor(admin.entity.position.y),
+      z: Math.floor(admin.entity.position.z)
+    };
+    const parking = { x: center.x + 41.5, y: center.y, z: center.z + 0.5 };
+
     admin.chat('/icerush setup');
     await waitFor(admin, /ICE RUSH aréna vytvorená/);
 
+    // Configure one deterministic pad at a real generated start-ring coordinate.
+    admin.chat(`/tp @s ${parking.x} ${parking.y} ${parking.z}`);
+    admin.chat('/icerush clearspots');
+    await waitFor(admin, /Všetky parkovacie miesta boli odstránené/);
+    admin.chat('/icerush addspot');
+    await waitFor(admin, /Parkovacie miesto #1 uložené/);
+    admin.chat('/icerush join');
+
     guest = connect('IceRushGuest');
     await spawned(guest, 'Guest');
-
-    admin.chat('/icerush join');
     guest.chat('/icerush join');
     await waitFor(admin, /IceRushGuest sa pripojil do ICE RUSH/);
+
     admin.chat('/icerush ready');
     guest.chat('/icerush ready');
-
     await waitFor(admin, /ICE RUSH sa začína!/);
     await waitFor(admin, /ŠTART! Kolo 1 — jazda!/);
     await waitFor(admin, /PARKOVANIE!/);
 
-    console.log('Parking phase reached with two connected clients; disconnecting guest to exercise elimination and winner flow.');
-    guest.quit('Integration test: deliberate elimination during parking phase');
-    await waitFor(admin, /IceRushGuest opustil zápas a vypadáva/);
+    // Move the admin's nearest boat onto the one configured pad; the other player misses it.
+    admin.chat(`/tp @e[type=minecraft:boat,sort=nearest,limit=1] ${parking.x} ${parking.y} ${parking.z}`);
+    await waitFor(admin, /Parkovacie miesto obsadené!/);
+    await waitFor(admin, /IceRushGuest vypadáva z kola!/);
     await waitFor(admin, /IceRushAdmin VYHRÁVA ICE RUSH!/);
 
     await new Promise(resolve => setTimeout(resolve, 1800));
     admin.chat('/icerush stats');
     await waitFor(admin, /Výhry: 1 \\| Hry: 1 \\| Prehry: 0/);
-    console.log('PASS: two real protocol clients joined, readied, entered racing and parking, produced an elimination and winner, and persisted a 1-win/1-game record.');
+    guest.chat('/icerush stats');
+    await waitFor(guest, /Výhry: 0 \\| Hry: 1 \\| Prehry: 1/);
+    console.log('PASS: two real protocol clients joined, readied, raced, parked/eliminated, declared a winner, and persisted both player records.');
   } finally {
     if (guest && guest.player) guest.quit();
     if (admin && admin.player) admin.quit();
