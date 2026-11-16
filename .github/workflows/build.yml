@@ -42,7 +42,11 @@ jobs:
       - name: Prepare Fabric 1.20.1 test server
         run: |
           mkdir -p server/mods
-          cp build/libs/*.jar server/mods/
+          MOD_JAR="$(find build/libs -maxdepth 1 -type f -name 'icerush-*.jar' ! -name '*-sources.jar' | head -n 1)"
+          test -n "$MOD_JAR"
+          unzip -p "$MOD_JAR" fabric.mod.json | grep -q '"environment": "server"'
+          unzip -p "$MOD_JAR" fabric.mod.json | grep -q '"minecraft": "1.20.1"'
+          cp "$MOD_JAR" server/mods/
           curl -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.92.7%2B1.20.1/fabric-api-0.92.7%2B1.20.1.jar" -o server/mods/fabric-api.jar
           curl -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.1/fabric-installer-1.0.1.jar" -o fabric-installer.jar
           cd server
