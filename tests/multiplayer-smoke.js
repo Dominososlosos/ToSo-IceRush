@@ -2,7 +2,7 @@ const mineflayer = require('mineflayer');
 
 const HOST = process.env.MC_HOST || '127.0.0.1';
 const PORT = Number(process.env.MC_PORT || 25565);
-const TIMEOUT = 90_000;
+const TIMEOUT = 30_000;
 
 function connect(username) {
   const bot = mineflayer.createBot({ host: HOST, port: PORT, username, version: '1.20.1', auth: 'offline' });
@@ -98,8 +98,11 @@ async function main() {
     await waitFor(guest, /Body: 60 \\| Turbo bonusy:/);
     console.log('PASS: two real protocol clients joined, readied, raced, parked/eliminated, declared a winner, and persisted both player records.');
   } finally {
-    if (guest && guest.player) guest.quit();
-    if (admin && admin.player) admin.quit();
+    for (const bot of [guest, admin]) {
+      if (!bot) continue;
+      try { bot.quit(); } catch (_) {}
+      try { if (bot._client) bot._client.end(); } catch (_) {}
+    }
   }
 }
 
