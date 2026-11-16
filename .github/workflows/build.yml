@@ -121,6 +121,17 @@ jobs:
             "finishHoldSeconds": 1
           }
           EOF
+          node - <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const bytes = crypto.createHash('md5').update('OfflinePlayer:IceRushAdmin').digest();
+          bytes[6] = (bytes[6] & 0x0f) | 0x30;
+          bytes[8] = (bytes[8] & 0x3f) | 0x80;
+          const hex = bytes.toString('hex');
+          const uuid = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+          fs.writeFileSync('ops.json', JSON.stringify([{ uuid, name: 'IceRushAdmin', level: 4, bypassesPlayerLimit: false }], null, 2));
+          console.log(`Prepared offline operator ${uuid}`);
+          NODE
       - name: Run complete two-client match through winner and stats
         timeout-minutes: 6
         run: |
@@ -140,7 +151,6 @@ jobs:
             sleep 2
           done
           grep -q 'Done (' logs/latest.log
-          printf 'op IceRushAdmin\n' >&3
           sleep 2
           cd ..
           node tests/multiplayer-smoke.js
