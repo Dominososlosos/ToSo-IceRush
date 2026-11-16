@@ -552,11 +552,14 @@ public final class IceRushGame {
 
     private int status(ServerCommandSource source) {
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
-        source.sendFeedback(() -> Text.literal("ICE RUSH | Stav: " + state + " | Kolo: " + round
+        Text statusMessage = Text.literal("ICE RUSH | Stav: " + state + " | Kolo: " + round
             + " | Hráči: " + activeCount() + "/" + participants.size()
-            + " | Ready: " + readyCount + " | Parkovacie miesta: " + parkingSpots.size()), false);
+            + " | Ready: " + readyCount + " | Parkovacie miesta: " + parkingSpots.size());
         if (source.getEntity() instanceof ServerPlayerEntity player) {
-            source.sendFeedback(() -> Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
+            player.sendMessage(statusMessage, false);
+            player.sendMessage(Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
+        } else {
+            source.sendFeedback(() -> statusMessage, false);
         }
         return 1;
     }
