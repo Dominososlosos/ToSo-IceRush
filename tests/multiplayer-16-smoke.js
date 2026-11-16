@@ -120,7 +120,7 @@ async function main() {
     await spawned(spectator, 'Late spectator');
     spectator.chat('/icerush join');
     await waitFor(spectator, /Hra už prebieha\. Do konca zápasu zostávaš divákom\./);
-    await waitForGameMode(spectator, 3);
+    await waitForGameMode(spectator, 'spectator');
     const readyRejected = waitForNewMessage(spectator, /Najprv sa prihlás do lobby/);
     spectator.chat('/icerush ready');
     await readyRejected;
@@ -147,7 +147,7 @@ async function main() {
       if (i !== PLAYER_COUNT && (row.wins !== 0 || row.losses !== 1)) throw new Error(name + ' disconnect was not recorded as a loss');
     }
     if (stats[offlineUuid('IceRushLate')]) throw new Error('Late spectator was incorrectly recorded as a competitor');
-    if (spectator.game.gameMode !== 3) throw new Error('Late spectator unexpectedly left spectator mode before match reset');
+    if (spectator.game.gameMode !== 'spectator') throw new Error('Late spectator unexpectedly left spectator mode before match reset: ' + spectator.game.gameMode);
 
     fs.writeFileSync('server/config/multiplayer-16-test-result.txt',
       'PASS: 16 competitors joined; 13/16 READY started the match; 17th late joiner stayed spectator and could not READY; 15 competitors disconnected; remaining player won; all 16 competitor stats persisted; spectator had no competitor stats.\n');
