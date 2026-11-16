@@ -74,15 +74,6 @@ async function spawned(bot, name) {
   });
 }
 
-async function waitForGameMode(bot, expected, timeout = 8000) {
-  const started = Date.now();
-  while (Date.now() - started < timeout) {
-    if (bot.game.gameMode === expected) return;
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  throw new Error('Expected gameMode ' + expected + ', got ' + bot.game.gameMode);
-}
-
 async function waitForPlayerGameMode(observer, username, expected, timeout = 8000) {
   const started = Date.now();
   while (Date.now() - started < timeout) {
@@ -135,7 +126,7 @@ async function main() {
     const readyRejected = waitForNewMessage(spectator, /Najprv sa prihlás do lobby/);
     spectator.chat('/icerush ready');
     await readyRejected;
-    await waitForGameMode(spectator, 'spectator');
+    await waitForPlayerGameMode(bots.get('IceRushP01'), 'IceRushLate', 3);
 
     for (let i = 1; i < PLAYER_COUNT; i++) {
       const name = 'IceRushP' + String(i).padStart(2, '0');
