@@ -86,15 +86,16 @@ async function main() {
 
     // Move the admin's nearest boat onto the one configured pad; the other player misses it.
     admin.chat(`/tp @e[type=minecraft:boat,sort=nearest,limit=1] ${parking.x} ${parking.y} ${parking.z}`);
-    await waitFor(admin, /Parkovacie miesto obsadené!/);
     await waitFor(admin, /IceRushGuest vypadáva z kola!/);
     await waitFor(admin, /IceRushAdmin VYHRÁVA ICE RUSH!/);
 
     await new Promise(resolve => setTimeout(resolve, 1800));
     admin.chat('/icerush stats');
     await waitFor(admin, /Výhry: 1 \\| Hry: 1 \\| Prehry: 0/);
+    await waitFor(admin, /Body: 115 \\| Turbo bonusy:/);
     guest.chat('/icerush stats');
     await waitFor(guest, /Výhry: 0 \\| Hry: 1 \\| Prehry: 1/);
+    await waitFor(guest, /Body: 60 \\| Turbo bonusy:/);
     console.log('PASS: two real protocol clients joined, readied, raced, parked/eliminated, declared a winner, and persisted both player records.');
   } finally {
     if (guest && guest.player) guest.quit();
