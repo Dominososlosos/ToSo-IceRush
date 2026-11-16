@@ -1,4 +1,5 @@
 const mineflayer = require('mineflayer');
+const fs = require('fs');
 
 const HOST = process.env.MC_HOST || '127.0.0.1';
 const PORT = Number(process.env.MC_PORT || 25565);
@@ -96,6 +97,7 @@ async function main() {
     guest.chat('/icerush stats');
     await waitFor(guest, /Výhry: 0 \\| Hry: 1 \\| Prehry: 1/);
     await waitFor(guest, /Body: 60 \\| Turbo bonusy:/);
+    fs.writeFileSync('server/config/multiplayer-test-result.txt', 'PASS: two clients joined, readied, raced, parked/eliminated, winner declared; admin 1W/115 points, guest 1L/60 points.\\n');
     console.log('PASS: two real protocol clients joined, readied, raced, parked/eliminated, declared a winner, and persisted both player records.');
   } finally {
     for (const bot of [guest, admin]) {
