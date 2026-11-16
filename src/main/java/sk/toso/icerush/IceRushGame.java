@@ -574,7 +574,9 @@ public final class IceRushGame {
             return;
         }
         Participant existing = participants.get(player.getUuid());
-        if (existing == null) lateSpectators.add(player.getUuid());
+        // Every connection made after the match has started is a spectator,
+        // including a reconnect by an already eliminated competitor.
+        lateSpectators.add(player.getUuid());
         phaseBar.addPlayer(player);
         player.changeGameMode(GameMode.SPECTATOR);
         teleportToLobby(player);
@@ -671,6 +673,12 @@ public final class IceRushGame {
     }
 
     public void tick(MinecraftServer server) {
+        // Re-assert spectator mode every server tick for anyone who joins after a match starts.
+        // This also covers reconnects and avoids a join-packet timing race on busy servers.
+        for (UUID spectatorId : lateSpectators) {
+            ServerPlayerEntity spectator = server.getPlayerManager().getPlayer(spectatorId);
+            if (spectator != null) spectator.changeGameMode(GameMode.SPECTATOR);
+        }
         if (server.getTicks() % 20 == 0) updateSidebar(server);
         if (state == State.WAITING) return;
         if (state == State.COUNTDOWN) {
