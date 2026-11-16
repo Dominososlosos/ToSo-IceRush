@@ -9,7 +9,7 @@ ICE RUSH is a server-only Fabric mod for Minecraft 1.20.1. Players join with a n
 - Java 17
 
 ## Build
-Use Gradle 8.12+ with Java 17:
+Build with Gradle 8.12+ running on JDK 21. The generated mod targets Java 17, so the dedicated server itself can run on Java 17 or newer:
 
 ```bash
 gradle build
