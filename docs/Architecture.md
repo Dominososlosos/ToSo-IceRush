@@ -1,6 +1,6 @@
 # ICE RUSH Architecture
 
-The active implementation is a Fabric server mod for Minecraft Java 1.21.1. The original datapack prototype is retained under `datapack/` as a reference; it is not loaded by the mod.
+The active implementation is a Fabric server mod for Minecraft Java 1.20.1. The original datapack prototype is retained under `datapack/` as a reference; it is not loaded by the mod.
 
 ## Runtime components
 
