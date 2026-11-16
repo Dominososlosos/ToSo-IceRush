@@ -1129,6 +1129,9 @@ public final class IceRushGame {
             participant.speedPercent = Math.max(config.minimumSpeedPercent,
                 Math.min(100, config.minimumSpeedPercent + speedTier * 5));
             ServerBossBar bar = speedBars.get(participant.id);
+            // A participant can briefly outlive its HUD bar during reconnect/cleanup.
+            // Never let a missing presentation object interrupt the authoritative game tick.
+            if (bar == null) continue;
             if (participant.speedPercent >= 80) {
                 bar.setColor(BossBar.Color.GREEN);
                 bar.setName(Text.literal("RÝCHLOSŤ — " + participant.speedPercent + "%"));
@@ -1144,7 +1147,6 @@ public final class IceRushGame {
             double targetScale = participant.speedPercent / 100.0;
             boat.setVelocity(new Vec3d(unscaledVelocity.x * targetScale, currentVelocity.y, unscaledVelocity.z * targetScale));
             participant.appliedSpeedScale = targetScale;
-            if (bar == null) continue;
             bar.setPercent(participant.speedPercent / 100.0F);
         }
     }
