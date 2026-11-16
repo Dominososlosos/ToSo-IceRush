@@ -1004,7 +1004,7 @@ public final class IceRushGame {
 
         // Each line gets an invisible, unique score holder. Its team prefix is the
         // visible text, so spaces, accents and punctuation never enter command parsing.
-        String[] holders = {"\\u200B", "\\u200C", "\\u200D"};
+        String[] holders = {"\u200B", "\u200C", "\u200D"};
         for (int i = 0; i < lines.length; i++) {
             String teamName = "icerush_line_" + (i + 1);
             var team = scoreboard.getTeam(teamName);
