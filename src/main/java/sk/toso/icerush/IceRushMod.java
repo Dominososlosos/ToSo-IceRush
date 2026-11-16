@@ -31,6 +31,6 @@ public final class IceRushMod implements ModInitializer {
             if (player instanceof ServerPlayerEntity serverPlayer) game.handleLobbyButton(serverPlayer, entity);
             return ActionResult.SUCCESS;
         });
-        LOGGER.info("ICE RUSH initialized for Fabric Loader 0.19.1 / Minecraft 1.21.1");
+        LOGGER.info("ICE RUSH initialized for Fabric Loader 0.16.10 / Minecraft 1.20.1");
     }
 }
