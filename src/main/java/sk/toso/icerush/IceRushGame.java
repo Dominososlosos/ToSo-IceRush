@@ -22,6 +22,7 @@ import net.minecraft.text.Text;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
+import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
 import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
 import net.minecraft.network.packet.s2c.play.TitleFadeS2CPacket;
 import net.minecraft.util.Formatting;
@@ -57,6 +58,7 @@ public final class IceRushGame {
     private final List<Vec3d> parkingSpots = new ArrayList<>();
     private final Set<Integer> occupiedSpots = new HashSet<>();
     private final Set<UUID> lateSpectators = new HashSet<>();
+    private final Map<UUID, Integer> lateSpectatorSyncTicks = new LinkedHashMap<>();
     private final Map<UUID, BoatEntity> playerBoats = new LinkedHashMap<>();
     private final Map<UUID, ServerBossBar> speedBars = new LinkedHashMap<>();
     private final ServerBossBar phaseBar = new ServerBossBar(Text.literal("ICE RUSH"), BossBar.Color.BLUE, BossBar.Style.PROGRESS);
@@ -150,6 +152,7 @@ public final class IceRushGame {
         }
         if (state != State.WAITING) {
             lateSpectators.add(player.getUuid());
+            lateSpectatorSyncTicks.put(player.getUuid(), 10);
             phaseBar.addPlayer(player);
             player.changeGameMode(GameMode.SPECTATOR);
             teleportToLobby(player);
@@ -577,6 +580,7 @@ public final class IceRushGame {
         // Every connection made after the match has started is a spectator,
         // including a reconnect by an already eliminated competitor.
         lateSpectators.add(player.getUuid());
+        lateSpectatorSyncTicks.put(player.getUuid(), 10);
         phaseBar.addPlayer(player);
         player.changeGameMode(GameMode.SPECTATOR);
         teleportToLobby(player);
@@ -611,6 +615,7 @@ public final class IceRushGame {
                 broadcast(server, Text.literal(name + " opustil zápas a vypadáva.").formatted(Formatting.RED));
             }
             lateSpectators.remove(playerId);
+            lateSpectatorSyncTicks.remove(playerId);
         }
         // A disconnect during a live round must resolve the match immediately
         // when one or fewer active competitors remain.
@@ -673,11 +678,22 @@ public final class IceRushGame {
     }
 
     public void tick(MinecraftServer server) {
-        // Re-assert spectator mode every server tick for anyone who joins after a match starts.
-        // This also covers reconnects and avoids a join-packet timing race on busy servers.
-        for (UUID spectatorId : lateSpectators) {
-            ServerPlayerEntity spectator = server.getPlayerManager().getPlayer(spectatorId);
-            if (spectator != null) spectator.changeGameMode(GameMode.SPECTATOR);
+        // JOIN can run close to the initial GameJoin packet. Re-send the spectator
+        // game-state packet for a few ticks so the client cannot be left in its
+        // initial survival mode if that packet arrives after the JOIN callback.
+        for (Map.Entry<UUID, Integer> entry : new ArrayList<>(lateSpectatorSyncTicks.entrySet())) {
+            ServerPlayerEntity spectator = server.getPlayerManager().getPlayer(entry.getKey());
+            if (spectator == null) {
+                lateSpectatorSyncTicks.remove(entry.getKey());
+                continue;
+            }
+            spectator.changeGameMode(GameMode.SPECTATOR);
+            spectator.networkHandler.sendPacket(new GameStateChangeS2CPacket(
+                GameStateChangeS2CPacket.GAME_MODE_CHANGED, (float) GameMode.SPECTATOR.getId()));
+            spectator.sendAbilitiesUpdate();
+            int remaining = entry.getValue() - 1;
+            if (remaining <= 0) lateSpectatorSyncTicks.remove(entry.getKey());
+            else lateSpectatorSyncTicks.put(entry.getKey(), remaining);
         }
         if (server.getTicks() % 20 == 0) updateSidebar(server);
         if (state == State.WAITING) return;
@@ -1506,6 +1522,7 @@ public final class IceRushGame {
         }
         participants.clear();
         lateSpectators.clear();
+        lateSpectatorSyncTicks.clear();
         occupiedSpots.clear();
         clearSpeedBars();
         phaseBar.clearPlayers();
