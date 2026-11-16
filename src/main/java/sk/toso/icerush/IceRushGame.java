@@ -952,7 +952,6 @@ public final class IceRushGame {
             participant.parkingSpot = -1;
             participant.parkingTimeTicks = 0;
         }
-        admitLateSpectators(server);
         beginNextRoundCountdown(server);
     }
 
