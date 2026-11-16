@@ -109,15 +109,17 @@ async function main() {
     spectator = connect('IceRushLate');
     await spawned(spectator, 'Late spectator');
     spectator.chat('/icerush join');
-    await waitFor(spectator, /Hra už prebieha\. Do konca zápasu zostávaš divákom\./);
-    const spectatorConfirmed = waitForNewMessage(spectator, /Tvoj režim: DIVÁK/);
-    spectator.chat('/icerush status');
-    await spectatorConfirmed;
+    await waitFor(spectator, /ICE RUSH už prebieha\. Sleduješ zápas ako divák až do jeho skončenia\./);
+    await waitFor(spectator, /Tvoj režim: DIVÁK/);
+    const lateJoinRejected = waitForNewMessage(spectator, /Hra už prebieha\. Do konca zápasu zostávaš divákom\./);
+    const lateJoinMode = waitForNewMessage(spectator, /Tvoj režim: DIVÁK/);
+    spectator.chat('/icerush join');
+    await lateJoinRejected;
+    await lateJoinMode;
     const readyRejected = waitForNewMessage(spectator, /Najprv sa prihlás do lobby/);
+    const spectatorStillConfirmed = waitForNewMessage(spectator, /Tvoj režim: DIVÁK/);
     spectator.chat('/icerush ready');
     await readyRejected;
-    const spectatorStillConfirmed = waitForNewMessage(spectator, /Tvoj režim: DIVÁK/);
-    spectator.chat('/icerush status');
     await spectatorStillConfirmed;
 
     for (let i = 1; i < PLAYER_COUNT; i++) {
