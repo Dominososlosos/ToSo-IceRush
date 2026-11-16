@@ -20,14 +20,13 @@ function connect(username) {
 }
 
 function waitForNewMessage(bot, pattern, timeout = TIMEOUT) {
-  const startIndex = bot.messages.length;
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       cleanup();
       reject(new Error('Timed out waiting for a new message matching ' + pattern + '. Recent messages: ' + bot.messages.slice(-25).join(' | ')));
     }, timeout);
     const onMessage = message => {
-      if (bot.messages.indexOf(message) < startIndex || !pattern.test(message)) return;
+      if (!pattern.test(message)) return;
       cleanup();
       resolve(message);
     };
