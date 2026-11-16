@@ -19,6 +19,26 @@ function connect(username) {
   return bot;
 }
 
+function waitForNewMessage(bot, pattern, timeout = TIMEOUT) {
+  const startIndex = bot.messages.length;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Timed out waiting for a new message matching ' + pattern + '. Recent messages: ' + bot.messages.slice(-25).join(' | ')));
+    }, timeout);
+    const onMessage = message => {
+      if (bot.messages.indexOf(message) < startIndex || !pattern.test(message)) return;
+      cleanup();
+      resolve(message);
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      bot.off('messagestr', onMessage);
+    };
+    bot.on('messagestr', onMessage);
+  });
+}
+
 function waitFor(bot, pattern, timeout = TIMEOUT) {
   const found = bot.messages.find(message => pattern.test(message));
   if (found) return Promise.resolve(found);
@@ -101,8 +121,9 @@ async function main() {
     spectator.chat('/icerush join');
     await waitFor(spectator, /Hra už prebieha\. Do konca zápasu zostávaš divákom\./);
     await waitForGameMode(spectator, 3);
+    const readyRejected = waitForNewMessage(spectator, /Najprv sa prihlás do lobby/);
     spectator.chat('/icerush ready');
-    await waitFor(spectator, /ICE RUSH už prebieha|do hry sa nemôžeš zapojiť|divákom/);
+    await readyRejected;
     await waitForGameMode(spectator, 3);
 
     for (let i = 1; i < PLAYER_COUNT; i++) {
