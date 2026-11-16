@@ -60,7 +60,7 @@ async function main() {
       y: Math.floor(admin.entity.position.y),
       z: Math.floor(admin.entity.position.z)
     };
-    const parking = { x: center.x + 41.5, y: center.y, z: center.z + 0.5 };
+    const parking = { x: center.x + 42.0, y: center.y, z: center.z + 0.5 };
 
     admin.chat('/icerush setup');
     await waitFor(admin, /ICE RUSH aréna vytvorená/);
