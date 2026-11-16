@@ -1,15 +1,15 @@
 # ICE RUSH
 
-ICE RUSH is a Fabric server mod for Minecraft 1.21.1. The original datapack prototype is retained under `datapack/` as a reference and is not loaded by the mod.
+ICE RUSH is a Fabric server mod for Minecraft 1.20.1. The original datapack prototype is retained under `datapack/` as a reference and is not loaded by the mod.
 
 ## Target
-- Minecraft Java Edition 1.21.1
-- Fabric Loader 0.19.1
-- Fabric API 0.116.18+1.21.1
-- Java 21
+- Minecraft Java Edition 1.20.1
+- Fabric Loader 0.16.10
+- Fabric API 0.92.7+1.20.1
+- Java 17
 
 ## Build
-Use Gradle 8.12+ with Java 21:
+Use Gradle 8.12+ with Java 17:
 
 ```bash
 gradle build
@@ -19,15 +19,15 @@ The mod JAR is created in `build/libs/`.
 
 ## Installation
 
-1. Use a Minecraft Java 1.21.1 server with Fabric Loader 0.19.1 and Java 21.
-2. Install Fabric API 0.116.18+1.21.1 in the server `mods` folder.
+1. Use a Minecraft Java 1.20.1 server with Fabric Loader 0.16.10 and Java 17.
+2. Install Fabric API 0.92.7+1.20.1 in the server `mods` folder.
 3. Copy the ICE RUSH JAR from `build/libs/` into the same `mods` folder.
 4. Start the server and run `/icerush setup` as an administrator at the intended arena center.
 5. If the lobby controls or results board are missing on an existing arena, run `/icerush lobbysetup`.
 
 ## CI verification
 
-GitHub Actions builds the mod and runs a dedicated Fabric server smoke test. The smoke test verifies that the mod loads, the `/icerush status` command is registered, and the server configuration is created. It does not replace a real multiplayer gameplay test.
+GitHub Actions builds the mod and runs a dedicated Fabric 1.20.1 server smoke test. The smoke test verifies that the mod loads, the `/icerush status` command is registered, and the server configuration is created. It does not replace a real multiplayer gameplay test.
 
 ## Commands
 - `/icerush join` — join the lobby
