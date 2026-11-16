@@ -124,7 +124,7 @@ async function main() {
     const readyRejected = waitForNewMessage(spectator, /Najprv sa prihlás do lobby/);
     spectator.chat('/icerush ready');
     await readyRejected;
-    await waitForGameMode(spectator, 3);
+    await waitForGameMode(spectator, 'spectator');
 
     for (let i = 1; i < PLAYER_COUNT; i++) {
       const name = 'IceRushP' + String(i).padStart(2, '0');
