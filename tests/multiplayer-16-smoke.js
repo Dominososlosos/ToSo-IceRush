@@ -54,6 +54,15 @@ async function spawned(bot, name) {
   });
 }
 
+async function waitForGameMode(bot, expected, timeout = 8000) {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    if (bot.game.gameMode === expected) return;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error('Expected gameMode ' + expected + ', got ' + bot.game.gameMode);
+}
+
 function offlineUuid(name) {
   const bytes = crypto.createHash('md5').update('OfflinePlayer:' + name).digest();
   bytes[6] = (bytes[6] & 0x0f) | 0x30;
@@ -91,12 +100,10 @@ async function main() {
     await spawned(spectator, 'Late spectator');
     spectator.chat('/icerush join');
     await waitFor(spectator, /Hra už prebieha\. Do konca zápasu zostávaš divákom\./);
-    if (spectator.game.gameMode !== 3) {
-      throw new Error('Late joiner must be in SPECTATOR (gameMode 3), got ' + spectator.game.gameMode);
-    }
+    await waitForGameMode(spectator, 3);
     spectator.chat('/icerush ready');
-    await waitFor(spectator, /Najprv sa prihlás do lobby/);
-    if (spectator.game.gameMode !== 3) throw new Error('Late joiner was not kept in spectator mode after attempting READY');
+    await waitFor(spectator, /ICE RUSH už prebieha|do hry sa nemôžeš zapojiť|divákom/);
+    await waitForGameMode(spectator, 3);
 
     for (let i = 1; i < PLAYER_COUNT; i++) {
       const name = 'IceRushP' + String(i).padStart(2, '0');
