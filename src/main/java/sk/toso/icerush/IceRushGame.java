@@ -555,6 +555,9 @@ public final class IceRushGame {
         source.sendFeedback(() -> Text.literal("ICE RUSH | Stav: " + state + " | Kolo: " + round
             + " | Hráči: " + activeCount() + "/" + participants.size()
             + " | Ready: " + readyCount + " | Parkovacie miesta: " + parkingSpots.size()), false);
+        if (source.getEntity() instanceof ServerPlayerEntity player) {
+            source.sendFeedback(() -> Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
+        }
         return 1;
     }
 
