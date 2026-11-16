@@ -5,7 +5,7 @@
   "name": "ICE RUSH",
   "description": "Round-based multiplayer ice boat survival minigame.",
   "authors": ["ToSo"],
-  "environment": "*",
+  "environment": "server",
   "entrypoints": {
     "main": ["sk.toso.icerush.IceRushMod"]
   },
