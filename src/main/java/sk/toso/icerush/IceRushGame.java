@@ -71,7 +71,6 @@ public final class IceRushGame {
     private int celebrationTicks;
     private boolean sidebarInitialized;
     private boolean lobbyBoardBuilt;
-    private final List<String> sidebarEntries = new ArrayList<>();
     private String roundEvent = "NONE";
     private ServerWorld arenaWorld;
     private BlockPos arenaCenter;
@@ -974,18 +973,22 @@ public final class IceRushGame {
 
     private void updateSidebar(MinecraftServer server) {
         updateLobbyLeaderboard(server);
-        if (!sidebarInitialized) {
-            server.getCommandManager().executeWithPrefix(server.getCommandSource(),
-                "scoreboard objectives add icerush dummy {\"text\":\"ICE RUSH\",\"color\":\"aqua\",\"bold\":true}");
-            server.getCommandManager().executeWithPrefix(server.getCommandSource(), "scoreboard objectives setdisplay sidebar icerush");
-            server.getCommandManager().executeWithPrefix(server.getCommandSource(), "scoreboard players reset * icerush");
-            sidebarInitialized = true;
+
+        // Use the scoreboard API instead of building commands from display text.
+        // In Minecraft 1.20.1, quoted fake-player names containing spaces are not
+        // parsed as scoreboard holders, which caused repeated command syntax errors.
+        var scoreboard = server.getScoreboard();
+        var objective = scoreboard.getNullableObjective("icerush");
+        if (objective == null) {
+            objective = scoreboard.addObjective(
+                "icerush",
+                net.minecraft.scoreboard.ScoreboardCriterion.DUMMY,
+                Text.literal("ICE RUSH").formatted(Formatting.AQUA, Formatting.BOLD),
+                net.minecraft.scoreboard.ScoreboardCriterion.RenderType.INTEGER
+            );
         }
-        for (String previous : sidebarEntries) {
-            server.getCommandManager().executeWithPrefix(server.getCommandSource(),
-                "scoreboard players reset \"" + previous.replace("\"", "") + "\" icerush");
-        }
-        sidebarEntries.clear();
+        scoreboard.setObjectiveSlot(net.minecraft.scoreboard.Scoreboard.getDisplaySlotId("sidebar"), objective);
+
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
         String phase = switch (state) {
             case WAITING -> "ČAKÁREŇ";
@@ -998,12 +1001,27 @@ public final class IceRushGame {
             ? new String[]{"Hráči: " + participants.size() + "/" + config.maxPlayers,
                 "READY: " + readyCount + "/" + participants.size(), "Stav: " + phase}
             : new String[]{"Hráči: " + activeCount(), "Kolo: " + round, "Stav: " + phase};
+
+        // Each line gets an invisible, unique score holder. Its team prefix is the
+        // visible text, so spaces, accents and punctuation never enter command parsing.
+        String[] holders = {"\\u200B", "\\u200C", "\\u200D"};
         for (int i = 0; i < lines.length; i++) {
-            String line = lines[i].replace("\"", "");
-            server.getCommandManager().executeWithPrefix(server.getCommandSource(),
-                "scoreboard players set \"" + line + "\" icerush " + (lines.length - i));
-            sidebarEntries.add(line);
+            String teamName = "icerush_line_" + (i + 1);
+            var team = scoreboard.getTeam(teamName);
+            if (team == null) team = scoreboard.addTeam(teamName);
+
+            String holder = holders[i];
+            var previousTeam = scoreboard.getPlayerTeam(holder);
+            if (previousTeam != team) {
+                if (previousTeam != null) scoreboard.clearPlayerTeam(holder);
+                scoreboard.addPlayerToTeam(holder, team);
+            }
+
+            team.setPrefix(Text.literal(lines[i]));
+            team.setSuffix(Text.empty());
+            scoreboard.getPlayerScore(holder, objective).setScore(lines.length - i);
         }
+        sidebarInitialized = true;
     }
 
     private void updateLobbyLeaderboard(MinecraftServer server) {
