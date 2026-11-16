@@ -153,7 +153,8 @@ public final class IceRushGame {
             phaseBar.addPlayer(player);
             player.changeGameMode(GameMode.SPECTATOR);
             teleportToLobby(player);
-            player.sendMessage(Text.literal("Hra už prebieha. Sleduješ ju a do hry sa zapojíš v ďalšom kole.").formatted(Formatting.YELLOW), false);
+            player.sendMessage(Text.literal("Hra už prebieha. Do konca zápasu zostávaš divákom.").formatted(Formatting.YELLOW), false);
+            player.sendMessage(Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
             return 1;
         }
         if (participants.size() >= config.maxPlayers) {
@@ -195,6 +196,7 @@ public final class IceRushGame {
         Participant participant = participants.get(player.getUuid());
         if (state != State.WAITING || participant == null) {
             player.sendMessage(Text.literal("Najprv sa prihlás do lobby: /icerush join").formatted(Formatting.YELLOW), false);
+            player.sendMessage(Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
             return 0;
         }
         if (participant.ready) {
@@ -574,13 +576,16 @@ public final class IceRushGame {
             return;
         }
         Participant existing = participants.get(player.getUuid());
-        if (existing == null) lateSpectators.add(player.getUuid());
+        // Every connection made after the match has started is a spectator,
+        // including a reconnect by an already eliminated competitor.
+        lateSpectators.add(player.getUuid());
         phaseBar.addPlayer(player);
         player.changeGameMode(GameMode.SPECTATOR);
         teleportToLobby(player);
         player.sendMessage(Text.literal(existing != null && existing.eliminated
             ? "Už si bol vyradený. Do ďalšej hry zostávaš divákom."
-            : "ICE RUSH už prebieha. Sleduješ zápas a do ďalšieho kola sa môžeš zapojiť.").formatted(Formatting.YELLOW), false);
+            : "ICE RUSH už prebieha. Sleduješ zápas ako divák až do jeho skončenia.").formatted(Formatting.YELLOW), false);
+        player.sendMessage(Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
     }
 
     public void onPlayerDisconnect(UUID playerId, MinecraftServer server) {
@@ -609,9 +614,12 @@ public final class IceRushGame {
                 broadcast(server, Text.literal(name + " opustil zápas a vypadáva.").formatted(Formatting.RED));
             }
             lateSpectators.remove(playerId);
-            if (state == State.COUNTDOWN && !lobbyCountdown && activeCount() <= 1) {
-                declareWinner(server);
-            }
+        }
+        // A disconnect during a live round must resolve the match immediately
+        // when one or fewer active competitors remain.
+        if (state != State.WAITING && state != State.FINISHED
+            && !(state == State.COUNTDOWN && lobbyCountdown) && activeCount() <= 1) {
+            declareWinner(server);
         }
     }
 
@@ -751,7 +759,6 @@ public final class IceRushGame {
     }
 
     private void startRound(MinecraftServer server) {
-        if (!lobbyCountdown) admitLateSpectators(server);
         if (round == 0) resultsCommitted = false;
         boatsLocked = false;
         lobbyCountdown = false;
@@ -950,7 +957,6 @@ public final class IceRushGame {
             participant.parkingSpot = -1;
             participant.parkingTimeTicks = 0;
         }
-        admitLateSpectators(server);
         beginNextRoundCountdown(server);
     }
 
@@ -1300,22 +1306,6 @@ public final class IceRushGame {
             } else if (roundEvent.equals("FOG") && server.getTicks() % 20 == 0) {
                 arenaWorld.spawnParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, boat.getX(), boat.getY() + 0.4, boat.getZ(), 5, 1.0, 0.2, 1.0, 0.01);
             }
-        }
-    }
-
-    private void admitLateSpectators(MinecraftServer server) {
-        int capacity = Math.min(config.maxPlayers, parkingSpots.size() + 1);
-        if (lateSpectators.isEmpty() || activeCount() >= capacity) return;
-        for (UUID id : new ArrayList<>(lateSpectators)) {
-            if (activeCount() >= capacity) break;
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
-            if (player == null) continue;
-            Participant participant = new Participant(id);
-            participant.playerName = player.getName().getString();
-            participants.put(id, participant);
-            lateSpectators.remove(id);
-            player.changeGameMode(GameMode.SURVIVAL);
-            player.sendMessage(Text.literal("Pripojil si sa do ďalšieho kola ICE RUSH!").formatted(Formatting.GREEN), false);
         }
     }
 
