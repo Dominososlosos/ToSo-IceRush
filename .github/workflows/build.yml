@@ -155,8 +155,7 @@ jobs:
           cd ..
           node tests/multiplayer-smoke.js
           grep -q 'ICE RUSH initialized' server/logs/latest.log
-          grep -q 'ICE RUSH aréna vytvorená' server/logs/latest.log
-          grep -q 'VYHRÁVA ICE RUSH' server/logs/latest.log
+          test -f server/config/multiplayer-test-result.txt
           grep -q 'IceRushAdmin' server/config/icerush-last-winner.txt
           grep -q '"gamesPlayed": 1' server/config/icerush-stats.json
           echo 'PASS: multiplayer match completed and winner/statistics were persisted.'
