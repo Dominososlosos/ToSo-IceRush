@@ -154,6 +154,7 @@ public final class IceRushGame {
             player.changeGameMode(GameMode.SPECTATOR);
             teleportToLobby(player);
             player.sendMessage(Text.literal("Hra už prebieha. Do konca zápasu zostávaš divákom.").formatted(Formatting.YELLOW), false);
+            player.sendMessage(Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
             return 1;
         }
         if (participants.size() >= config.maxPlayers) {
@@ -195,6 +196,7 @@ public final class IceRushGame {
         Participant participant = participants.get(player.getUuid());
         if (state != State.WAITING || participant == null) {
             player.sendMessage(Text.literal("Najprv sa prihlás do lobby: /icerush join").formatted(Formatting.YELLOW), false);
+            player.sendMessage(Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
             return 0;
         }
         if (participant.ready) {
@@ -552,15 +554,9 @@ public final class IceRushGame {
 
     private int status(ServerCommandSource source) {
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
-        Text statusMessage = Text.literal("ICE RUSH | Stav: " + state + " | Kolo: " + round
+        source.sendFeedback(() -> Text.literal("ICE RUSH | Stav: " + state + " | Kolo: " + round
             + " | Hráči: " + activeCount() + "/" + participants.size()
-            + " | Ready: " + readyCount + " | Parkovacie miesta: " + parkingSpots.size());
-        if (source.getEntity() instanceof ServerPlayerEntity player) {
-            player.sendMessage(statusMessage, false);
-            player.sendMessage(Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
-        } else {
-            source.sendFeedback(() -> statusMessage, false);
-        }
+            + " | Ready: " + readyCount + " | Parkovacie miesta: " + parkingSpots.size()), false);
         return 1;
     }
 
@@ -589,6 +585,7 @@ public final class IceRushGame {
         player.sendMessage(Text.literal(existing != null && existing.eliminated
             ? "Už si bol vyradený. Do ďalšej hry zostávaš divákom."
             : "ICE RUSH už prebieha. Sleduješ zápas ako divák až do jeho skončenia.").formatted(Formatting.YELLOW), false);
+        player.sendMessage(Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
     }
 
     public void onPlayerDisconnect(UUID playerId, MinecraftServer server) {
