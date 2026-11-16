@@ -2,7 +2,7 @@ name: Build Fabric mod
 
 on:
   push:
-    branches: [ main, compat/minecraft-1.20.1, compat/fabric-loader-0.19.x ]
+    branches: [ main, compat/minecraft-1.20.1, compat/fabric-loader-0.19.x, test/16-player-spectator-disconnect ]
   pull_request:
     branches: [ main ]
 
