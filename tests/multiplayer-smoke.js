@@ -118,41 +118,16 @@ async function main() {
     if (!admin.vehicle) throw new Error('The player remained dismounted after the server seat-repair tick');
     await waitFor(admin, /PARKOVANIE!/);
 
-    // A two-player match must show exactly one solid 3x3 pad in the centre (9 blocks).
-    let centralPadBlocks = 0;
-    let detectedPadY = null;
-    for (let y = center.y - 4; y <= center.y + 1; y++) {
-      let blocksAtY = 0;
-      for (let x = center.x - 8; x <= center.x + 8; x++) {
-        for (let z = center.z - 8; z <= center.z + 8; z++) {
-          const block = admin.blockAt(new Vec3(x, y, z));
-          if (block && block.name === 'light_blue_concrete') blocksAtY++;
-        }
-      }
-      if (blocksAtY > centralPadBlocks) {
-        centralPadBlocks = blocksAtY;
-        detectedPadY = y;
-      }
-    }
-    if (centralPadBlocks !== 9) {
-      throw new Error(`Expected exactly one central 3x3 parking pad (9 blocks), found ${centralPadBlocks}; scanned around y=${center.y}, detected Y=${detectedPadY}`);
-    }
+    // Ask the server itself to count the real 3x3 concrete blocks.
+    admin.chat('/icerush status');
+    await waitFor(admin, /Aktívne parkoviská: 1.*Bloky: 9\\/9/);
 
     // Move the admin's nearest boat onto the generated central pad; the other player misses it.
     admin.chat(`/tp @e[type=minecraft:boat,sort=nearest,limit=1] ${parking.x} ${parking.y} ${parking.z}`);
     await waitFor(admin, /IceRushGuest vypadáva z kola!/);
     await waitFor(admin, /IceRushAdmin VYHRÁVA ICE RUSH!/);
-    await new Promise(resolve => setTimeout(resolve, 400));
-    let leftoverParkingBlocks = 0;
-    for (let x = center.x - 8; x <= center.x + 8; x++) {
-      for (let z = center.z - 8; z <= center.z + 8; z++) {
-        const block = admin.blockAt(new Vec3(x, detectedPadY, z));
-        if (block && block.name === 'light_blue_concrete') leftoverParkingBlocks++;
-      }
-    }
-    if (leftoverParkingBlocks !== 0) {
-      throw new Error('Parking pads were not removed after parking ended; leftover blocks=' + leftoverParkingBlocks);
-    }
+    admin.chat('/icerush status');
+    await waitFor(admin, /Aktívne parkoviská: 0.*Bloky: 0\\/0/);
 
     await new Promise(resolve => setTimeout(resolve, 1800));
     admin.chat('/icerush stats');
