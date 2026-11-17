@@ -132,7 +132,7 @@ async function main() {
     let leftoverParkingBlocks = 0;
     for (let x = center.x - 8; x <= center.x + 8; x++) {
       for (let z = center.z - 8; z <= center.z + 8; z++) {
-        const block = admin.blockAt(new Vec3(x, center.y - 1, z));
+        const block = admin.blockAt(new Vec3(x, detectedPadY, z));
         if (block && block.name === 'light_blue_concrete') leftoverParkingBlocks++;
       }
     }
