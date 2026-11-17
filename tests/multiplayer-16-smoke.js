@@ -1,4 +1,5 @@
 const mineflayer = require('mineflayer');
+const { Vec3 } = require('vec3');
 const fs = require('fs');
 const crypto = require('crypto');
 
@@ -8,6 +9,7 @@ const TIMEOUT = 45_000;
 const PLAYER_COUNT = 16;
 const bots = new Map();
 let spectator;
+let arenaCenter;
 
 function connect(username) {
   const bot = mineflayer.createBot({ host: HOST, port: PORT, username, version: '1.20.1', auth: 'offline' });
@@ -89,8 +91,20 @@ async function main() {
       bots.set(name, bot);
       await spawned(bot, name);
       if (i === 1) {
+        arenaCenter = {
+          x: Math.floor(bot.entity.position.x),
+          y: Math.floor(bot.entity.position.y),
+          z: Math.floor(bot.entity.position.z)
+        };
         bot.chat('/icerush setup');
         await waitFor(bot, /ICE RUSH aréna vytvorená/);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const characters = Object.values(bot.entities).filter(entity =>
+          entity.name === 'zombie' && Math.abs(entity.position.y - bot.entity.position.y) < 10);
+        if (characters.length !== 6) throw new Error('Expected six non-villager lobby characters, found ' + characters.length);
+        const villagers = Object.values(bot.entities).filter(entity =>
+          entity.name === 'villager' && Math.abs(entity.position.y - bot.entity.position.y) < 10);
+        if (villagers.length !== 0) throw new Error('Villager NPCs are still present in the lobby');
         bot.chat('/icerush join');
         await waitFor(bot, /sa pripojil do ICE RUSH/);
       } else {
@@ -122,7 +136,33 @@ async function main() {
     await readyRejected;
     await spectatorStillConfirmed;
 
-    for (let i = 1; i < PLAYER_COUNT; i++) {
+    await waitFor(bots.get('IceRushP01'), /PARKOVANIE!/, 120_000);
+    const countCentralPads = () => {
+      let blocks = 0;
+      for (let x = arenaCenter.x - 8; x <= arenaCenter.x + 8; x++) {
+        for (let z = arenaCenter.z - 8; z <= arenaCenter.z + 8; z++) {
+          const block = bots.get('IceRushP16').blockAt(new Vec3(x, arenaCenter.y - 1, z));
+          if (block && block.name === 'light_blue_concrete') blocks++;
+        }
+      }
+      return blocks;
+    };
+    const fullPadCount = countCentralPads();
+    if (fullPadCount !== 15 * 9) {
+      throw new Error('16 active players must produce exactly 15 central 3x3 pads (135 blocks); found ' + fullPadCount);
+    }
+
+    // Disconnecting one competitor during parking must immediately remove exactly one pad.
+    const firstName = 'IceRushP01';
+    bots.get(firstName).quit();
+    await waitFor(spectator, new RegExp(firstName + ' opustil zápas a vypadáva\\.'));
+    await new Promise(resolve => setTimeout(resolve, 350));
+    const afterOneDisconnect = countCentralPads();
+    if (afterOneDisconnect !== 14 * 9) {
+      throw new Error('After one disconnect, expected 14 central pads (126 blocks); found ' + afterOneDisconnect);
+    }
+
+    for (let i = 2; i < PLAYER_COUNT; i++) {
       const name = 'IceRushP' + String(i).padStart(2, '0');
       bots.get(name).quit();
       await waitFor(spectator, new RegExp(name + ' opustil zápas a vypadáva\\.'));
