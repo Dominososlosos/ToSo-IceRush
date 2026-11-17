@@ -402,19 +402,20 @@ public final class IceRushGame {
     private void buildLobbyControls() {
         if (arenaWorld == null || arenaCenter == null) return;
         int lobbyY = arenaCenter.getY() - 1 + config.arenaLobbyHeight;
+        buildLobbyDecor(lobbyY);
+
         String[] actions = {"join", "ready", "rules", "top", "stats", "lastwinner"};
-        String[] labels = {"JOIN", "READY", "PRAVIDLÁ", "TOP 10", "ŠTATISTIKY", "POSLEDNÝ VÍŤAZ"};
-        net.minecraft.block.Block[] colors = {Blocks.LIME_CARPET, Blocks.GREEN_CARPET, Blocks.BLUE_CARPET,
-            Blocks.YELLOW_CARPET, Blocks.PURPLE_CARPET, Blocks.CYAN_CARPET};
-        Box searchBox = new Box(arenaCenter.getX() - 10, lobbyY - 1, arenaCenter.getZ() + 2,
-            arenaCenter.getX() + 10, lobbyY + 5, arenaCenter.getZ() + 9);
+        String[] labels = {"▶ JOIN", "✓ READY", "PRAVIDLÁ", "TOP 10", "ŠTATISTIKY", "VÍŤAZ"};
+        net.minecraft.block.Block[] colors = {Blocks.CYAN_CARPET, Blocks.LIME_CARPET, Blocks.LIGHT_BLUE_CARPET,
+            Blocks.BLUE_CARPET, Blocks.LIGHT_BLUE_CARPET, Blocks.WHITE_CARPET};
+        Box searchBox = new Box(arenaCenter.getX() - 10, lobbyY - 1, arenaCenter.getZ() - 8,
+            arenaCenter.getX() + 10, lobbyY + 7, arenaCenter.getZ() + 9);
         for (int i = 0; i < actions.length; i++) {
             String tag = "icerush_button_" + actions[i];
             String labelTag = "icerush_lobby_label_" + actions[i];
             int x = arenaCenter.getX() - 5 + i * 2;
             int z = arenaCenter.getZ() + 5;
-            BlockPos pad = new BlockPos(x, lobbyY, z);
-            arenaWorld.setBlockState(pad, colors[i].getDefaultState());
+            arenaWorld.setBlockState(new BlockPos(x, lobbyY, z), colors[i].getDefaultState());
 
             boolean buttonExists = !arenaWorld.getEntitiesByClass(InteractionEntity.class, searchBox,
                 entity -> entity.getCommandTags().contains(tag)).isEmpty();
@@ -440,6 +441,69 @@ public final class IceRushGame {
                 arenaWorld.spawnEntity(label);
             }
         }
+        ensureLobbyText("icerush_lobby_title", arenaCenter.getX() + 0.5, lobbyY + 3.4, arenaCenter.getZ() - 5.5,
+            Text.literal("TOSO  •  ICE RUSH").formatted(Formatting.AQUA, Formatting.BOLD));
+        ensureLobbyText("icerush_lobby_subtitle", arenaCenter.getX() + 0.5, lobbyY + 2.8, arenaCenter.getZ() - 5.5,
+            Text.literal("ĽADOVÁ ARÉNA  |  AŽ 16 HRÁČOV").formatted(Formatting.WHITE));
+        ensureLobbyText("icerush_lobby_hint", arenaCenter.getX() + 0.5, lobbyY + 1.7, arenaCenter.getZ() + 7.0,
+            Text.literal("VSTÚP NA FAREBNÉ TLAČIDLO A ZAČNI").formatted(Formatting.YELLOW, Formatting.BOLD));
+    }
+
+    private void buildLobbyDecor(int lobbyY) {
+        int cx = arenaCenter.getX();
+        int cz = arenaCenter.getZ();
+        for (int x = -8; x <= 8; x++) {
+            for (int z = -8; z <= 8; z++) {
+                BlockState floor;
+                if (Math.abs(x) <= 5 && Math.abs(z) <= 5) {
+                    floor = Blocks.LIGHT_BLUE_STAINED_GLASS.getDefaultState();
+                } else if (Math.abs(x) == 8 || Math.abs(z) == 8) {
+                    floor = Blocks.BLUE_CONCRETE.getDefaultState();
+                } else if (Math.abs(x) == 7 || Math.abs(z) == 7) {
+                    floor = Blocks.CYAN_CONCRETE.getDefaultState();
+                } else if ((Math.abs(x) + Math.abs(z)) % 4 == 0) {
+                    floor = Blocks.LIGHT_BLUE_CONCRETE.getDefaultState();
+                } else {
+                    floor = Blocks.SMOOTH_QUARTZ.getDefaultState();
+                }
+                arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY, cz + z), floor);
+            }
+        }
+        for (int sx : new int[]{-7, 7}) {
+            for (int sz : new int[]{-7, 7}) {
+                for (int dy = 1; dy <= 3; dy++) {
+                    arenaWorld.setBlockState(new BlockPos(cx + sx, lobbyY + dy, cz + sz),
+                        (dy == 3 ? Blocks.CYAN_CONCRETE : Blocks.BLUE_CONCRETE).getDefaultState());
+                }
+                arenaWorld.setBlockState(new BlockPos(cx + sx, lobbyY + 4, cz + sz), Blocks.SEA_LANTERN.getDefaultState());
+            }
+        }
+        for (int x = -4; x <= 4; x++) {
+            arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 1, cz - 7), Blocks.LIGHT_BLUE_CARPET.getDefaultState());
+            arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 1, cz + 7), Blocks.LIGHT_BLUE_CARPET.getDefaultState());
+        }
+    }
+
+    private void ensureLobbyText(String tag, double x, double y, double z, Text text) {
+        Box area = new Box(arenaCenter.getX() - 10, arenaCenter.getY() + config.arenaLobbyHeight - 2,
+            arenaCenter.getZ() - 10, arenaCenter.getX() + 10, arenaCenter.getY() + config.arenaLobbyHeight + 9,
+            arenaCenter.getZ() + 10);
+        List<ArmorStandEntity> found = arenaWorld.getEntitiesByClass(ArmorStandEntity.class, area,
+            stand -> stand.getCommandTags().contains(tag));
+        ArmorStandEntity stand;
+        if (found.isEmpty()) {
+            stand = new ArmorStandEntity(EntityType.ARMOR_STAND, arenaWorld);
+            stand.setPosition(x, y, z);
+            stand.setInvisible(true);
+            stand.setNoGravity(true);
+            stand.setInvulnerable(true);
+            stand.setCustomNameVisible(true);
+            stand.addCommandTag(tag);
+            arenaWorld.spawnEntity(stand);
+        } else {
+            stand = found.get(0);
+        }
+        stand.setCustomName(text);
     }
 
     public boolean isLobbyButton(Entity entity) {
@@ -495,24 +559,41 @@ public final class IceRushGame {
     private int showStats(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
-        player.sendMessage(Text.literal("ICE RUSH ŠTATISTIKY"), false);
-        player.sendMessage(Text.literal("Výhry: " + stats.wins + " | Hry: " + stats.gamesPlayed + " | Prehry: " + stats.losses), false);
-        player.sendMessage(Text.literal("Body: " + stats.points + " | Turbo bonusy: " + stats.turboBonuses), false);
-        player.sendMessage(Text.literal("Prežité kolá: " + stats.roundsSurvived), false);
-        player.sendMessage(Text.literal("Rekord rýchlosti: " + String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord)), false);
-        player.sendMessage(Text.literal("Najlepšie parkovanie: " + (stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s")), false);
+        double winRate = stats.gamesPlayed == 0 ? 0.0 : stats.wins * 100.0 / stats.gamesPlayed;
+        player.sendMessage(Text.literal("━━━━━━━━━━ TOSO • ICE RUSH ━━━━━━━━━━").formatted(Formatting.AQUA, Formatting.BOLD), false);
+        player.sendMessage(Text.literal("          TVOJE ŠTATISTIKY").formatted(Formatting.WHITE, Formatting.BOLD), false);
+        player.sendMessage(Text.literal("Výhry: ").formatted(Formatting.GOLD).append(Text.literal(String.valueOf(stats.wins)).formatted(Formatting.WHITE))
+            .append(Text.literal("  │  Hry: ").formatted(Formatting.GRAY)).append(Text.literal(String.valueOf(stats.gamesPlayed)).formatted(Formatting.WHITE)), false);
+        player.sendMessage(Text.literal("Úspešnosť: ").formatted(Formatting.GREEN).append(Text.literal(String.format(java.util.Locale.ROOT, "%.1f%%", winRate)).formatted(Formatting.WHITE))
+            .append(Text.literal("  │  Prehry: ").formatted(Formatting.GRAY)).append(Text.literal(String.valueOf(stats.losses)).formatted(Formatting.WHITE)), false);
+        player.sendMessage(Text.literal("Celkové body: ").formatted(Formatting.AQUA).append(Text.literal(String.valueOf(stats.points)).formatted(Formatting.WHITE)), false);
+        player.sendMessage(Text.literal("Turbo bonusy: ").formatted(Formatting.YELLOW).append(Text.literal(String.valueOf(stats.turboBonuses)).formatted(Formatting.WHITE))
+            .append(Text.literal("  │  Prežité kolá: ").formatted(Formatting.GRAY)).append(Text.literal(String.valueOf(stats.roundsSurvived)).formatted(Formatting.WHITE)), false);
+        player.sendMessage(Text.literal("Rekord rýchlosti: ").formatted(Formatting.LIGHT_PURPLE).append(Text.literal(String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord)).formatted(Formatting.WHITE)), false);
+        player.sendMessage(Text.literal("Najlepšie parkovanie: ").formatted(Formatting.BLUE).append(Text.literal(stats.bestParkingTicks == 0 ? "Zatiaľ bez záznamu" : String.format(java.util.Locale.ROOT, "%.2f s", stats.bestParkingTicks / 20.0)).formatted(Formatting.WHITE)), false);
+        player.sendMessage(Text.literal("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━").formatted(Formatting.AQUA), false);
+        player.sendMessage(Text.literal("Ďalšie: /icerush top  •  /icerush achievements").formatted(Formatting.GRAY), false);
         return 1;
     }
 
     private int showTop(ServerCommandSource source) {
-        source.sendFeedback(() -> Text.literal("ICE RUSH — TOP 10 PODĽA BODOV"), false);
+        source.sendFeedback(() -> Text.literal("━━━━━━━━━━ TOSO • ICE RUSH ━━━━━━━━━━").formatted(Formatting.AQUA, Formatting.BOLD), false);
+        source.sendFeedback(() -> Text.literal("                 TOP 10 HRÁČOV").formatted(Formatting.GOLD, Formatting.BOLD), false);
+        List<Map.Entry<UUID, IceRushStatsStore.PlayerStats>> ranking = statsStore.top(10);
+        if (ranking.isEmpty()) {
+            source.sendFeedback(() -> Text.literal("Rebríček je zatiaľ prázdny. Odohraj prvú hru!").formatted(Formatting.GRAY), false);
+        }
         int rank = 1;
-        for (Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry : statsStore.top(10)) {
+        for (Map.Entry<UUID, IceRushStatsStore.PlayerStats> entry : ranking) {
             ServerPlayerEntity online = source.getServer().getPlayerManager().getPlayer(entry.getKey());
             String name = online == null ? (entry.getValue().playerName.isBlank() ? entry.getKey().toString().substring(0, 8) : entry.getValue().playerName) : online.getName().getString();
             int place = rank++;
-            source.sendFeedback(() -> Text.literal(place + ". " + name + " — " + entry.getValue().points + " bodov (výhry: " + entry.getValue().wins + ")"), false);
+            Formatting color = place == 1 ? Formatting.GOLD : place == 2 ? Formatting.GRAY : place == 3 ? Formatting.YELLOW : Formatting.WHITE;
+            source.sendFeedback(() -> Text.literal(String.format(java.util.Locale.ROOT, "%02d", place) + "  " + name)
+                .formatted(color, Formatting.BOLD).append(Text.literal("  •  " + entry.getValue().points + " bodov")
+                .formatted(Formatting.AQUA)).append(Text.literal("  •  " + entry.getValue().wins + " výhier").formatted(Formatting.GRAY)), false);
         }
+        source.sendFeedback(() -> Text.literal("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━").formatted(Formatting.AQUA), false);
         return 1;
     }
 
@@ -992,19 +1073,26 @@ public final class IceRushGame {
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
         String phase = switch (state) {
             case WAITING -> "ČAKÁREŇ";
-            case COUNTDOWN -> "ODPOČET";
+            case COUNTDOWN -> "ŠTART";
             case RACING -> "JAZDA";
             case PARKING -> "PARKOVANIE";
             case FINISHED -> "VÝSLEDOK";
         };
-        String[] lines = state == State.WAITING
-            ? new String[]{"Hráči: " + participants.size() + "/" + config.maxPlayers,
-                "READY: " + readyCount + "/" + participants.size(), "Stav: " + phase}
-            : new String[]{"Hráči: " + activeCount(), "Kolo: " + round, "Stav: " + phase};
+        String timeLabel = state == State.WAITING ? "Čaká sa na hráčov" : String.format(java.util.Locale.ROOT, "%d:%02d",
+            Math.max(0, timer) / 1200, (Math.max(0, timer) / 20) % 60);
+        String playerLabel = state == State.WAITING ? participants.size() + "/" + config.maxPlayers : activeCount() + " aktívnych";
+        String readyLabel = state == State.WAITING ? readyCount + "/" + participants.size() : "—";
+        String[] lines = {
+            "§b§lTOSO §f• §bICE RUSH",
+            "§7Stav: §f" + phase,
+            "§7Hráči: §f" + playerLabel,
+            "§7READY: §f" + readyLabel,
+            "§7Kolo: §f" + round + " §8| §7Čas: §f" + timeLabel,
+            "§7Parkoviská: §f" + parkingSpots.size()
+        };
 
-        // Each line gets an invisible, unique score holder. Its team prefix is the
-        // visible text, so spaces, accents and punctuation never enter command parsing.
-        String[] holders = {"\u200B", "\u200C", "\u200D"};
+        // Invisible unique holders keep the sidebar safe for accents, spaces and formatting.
+        String[] holders = {"\\u200B", "\\u200C", "\\u200D", "\\u2060", "\\u2061", "\\u2062"};
         for (int i = 0; i < lines.length; i++) {
             String teamName = "icerush_line_" + (i + 1);
             var team = scoreboard.getTeam(teamName);
