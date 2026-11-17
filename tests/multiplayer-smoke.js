@@ -84,6 +84,14 @@ async function main() {
     if (!admin.vehicle || !guest.vehicle) {
       throw new Error('A competitor is not actually mounted in a boat after the race starts');
     }
+    for (const [name, bot] of [['admin', admin], ['guest', guest]]) {
+      const dx = bot.vehicle.position.x - center.x;
+      const dz = bot.vehicle.position.z - center.z;
+      const radius = Math.sqrt(dx * dx + dz * dz);
+      if (radius < 36 || radius > 47) {
+        throw new Error(name + ' boat did not start on the track ring; radial distance=' + radius.toFixed(2));
+      }
+    }
     // Simulate Shift/dismount: the server must safely remount the competitor.
     admin.dismount();
     await new Promise(resolve => setTimeout(resolve, 600));
