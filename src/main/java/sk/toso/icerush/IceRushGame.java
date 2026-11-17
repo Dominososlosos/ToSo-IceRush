@@ -72,6 +72,7 @@ public final class IceRushGame {
     private final Map<BlockPos, BlockState> parkingOriginalStates = new LinkedHashMap<>();
     private final List<BlockPos> parkingAnimationBlocks = new ArrayList<>();
     private int parkingAnimationIndex;
+    private int visibleParkingPadCount = -1;
     private int celebrationTicks;
     private boolean sidebarInitialized;
     private boolean lobbyBoardBuilt;
@@ -885,6 +886,8 @@ public final class IceRushGame {
             phaseBar.setPercent(Math.max(0.0F, Math.min(1.0F, timer / (float) (config.parkingSeconds * 20))));
             if (server.getTicks() % 20 == 0) updateHud(server);
             enforceBoatSeats(server);
+            int requiredPadsNow = Math.max(0, activeCount() - 1);
+            if (visibleParkingPadCount != requiredPadsNow) showParkingPads();
             tickCracks(server);
             tickParkingVisuals(server);
             updateParking(server);
@@ -967,6 +970,7 @@ public final class IceRushGame {
                 parkingSpots.size(), count, activeCount());
             count = parkingSpots.size();
         }
+        visibleParkingPadCount = count;
         // Reveal the center only while PARKING is active.
         int cx = arenaCenter.getX();
         int cy = arenaCenter.getY() - 1;
@@ -1003,6 +1007,7 @@ public final class IceRushGame {
         parkingOriginalStates.clear();
         parkingAnimationBlocks.clear();
         parkingAnimationIndex = 0;
+        visibleParkingPadCount = -1;
     }
 
     private void tickParkingVisuals(MinecraftServer server) {
