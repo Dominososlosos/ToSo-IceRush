@@ -285,16 +285,16 @@ public final class IceRushGame {
         int cy = arenaCenter.getY() - 1;
         int cz = arenaCenter.getZ();
         // Jednorazová kruhová dráha: vonkajší priemer 90 blokov, šírka 7 blokov.
-        for (int x = -((int) Math.ceil(config.trackOuterRadius)); x <= (int) Math.ceil(config.trackOuterRadius); x++) {
-            for (int z = -((int) Math.ceil(config.trackOuterRadius)); z <= (int) Math.ceil(config.trackOuterRadius); z++) {
+        for (int x = -((int) Math.ceil(config.trackOuterRadius + 5)); x <= (int) Math.ceil(config.trackOuterRadius + 5); x++) {
+            for (int z = -((int) Math.ceil(config.trackOuterRadius + 5)); z <= (int) Math.ceil(config.trackOuterRadius + 5); z++) {
                 double radius = Math.sqrt((double) x * x + (double) z * z);
-                if (radius > config.trackOuterRadius) continue;
+                if (radius > config.trackOuterRadius + 5) continue;
                 for (int y = cy + 1; y <= cy + 6; y++) {
                     arenaWorld.setBlockState(new BlockPos(cx + x, y, cz + z), Blocks.AIR.getDefaultState());
                 }
                 // Solid packed-ice center plus a blue-ice driving ring.
                 BlockPos floor = new BlockPos(cx + x, cy, cz + z);
-                arenaWorld.setBlockState(floor, radius < config.trackInnerRadius
+                arenaWorld.setBlockState(floor, radius < config.trackInnerRadius || radius > config.trackOuterRadius
                     ? Blocks.PACKED_ICE.getDefaultState()
                     : Blocks.BLUE_ICE.getDefaultState());
             }
@@ -433,15 +433,16 @@ public final class IceRushGame {
             lobbyPosition = new Vec3d(config.arenaX + 0.5, config.arenaY + config.arenaLobbyHeight, config.arenaZ + 0.5);
         }
         int cx = arenaCenter.getX(), cy = arenaCenter.getY() - 1, cz = arenaCenter.getZ();
-        for (int x = -(int)Math.ceil(arenaOuterRadius()); x <= (int)Math.ceil(arenaOuterRadius()); x++) {
-            for (int z = -(int)Math.ceil(arenaOuterRadius()); z <= (int)Math.ceil(arenaOuterRadius()); z++) {
+        for (int x = -(int)Math.ceil(arenaOuterRadius() + 5); x <= (int)Math.ceil(arenaOuterRadius() + 5); x++) {
+            for (int z = -(int)Math.ceil(arenaOuterRadius() + 5); z <= (int)Math.ceil(arenaOuterRadius() + 5); z++) {
                 double radius = Math.sqrt((double)x * x + (double)z * z);
-                if (radius > arenaOuterRadius()) continue;
+                if (radius > arenaOuterRadius() + 5) continue;
                 for (int y = cy + 1; y <= cy + 7; y++) {
                     arenaWorld.setBlockState(new BlockPos(cx + x, y, cz + z), Blocks.AIR.getDefaultState());
                 }
-                arenaWorld.setBlockState(new BlockPos(cx + x, cy, cz + z), radius < arenaInnerRadius()
-                    ? Blocks.PACKED_ICE.getDefaultState() : Blocks.BLUE_ICE.getDefaultState());
+                arenaWorld.setBlockState(new BlockPos(cx + x, cy, cz + z),
+                    radius < arenaInnerRadius() || radius > arenaOuterRadius()
+                        ? Blocks.PACKED_ICE.getDefaultState() : Blocks.BLUE_ICE.getDefaultState());
             }
         }
         initializeArenaPositions();
