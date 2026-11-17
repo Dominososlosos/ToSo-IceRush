@@ -68,8 +68,14 @@ async function main() {
     admin.chat('/icerush setup');
     await waitFor(admin, /ICE RUSH aréna vytvorená/);
 
+    // Join by clicking the first player-shaped lobby character, not by command.
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const lobbyCharacters = Object.values(admin.entities).filter(entity => entity.name === 'armor_stand');
+    if (lobbyCharacters.length !== 6) throw new Error('Expected six lobby characters, found ' + lobbyCharacters.length);
+    const joinStand = lobbyCharacters.sort((a, b) => a.position.x - b.position.x)[0];
+    admin.activateEntity(joinStand);
+    await waitFor(admin, /IceRushAdmin sa pripojil do ICE RUSH/);
     // Use the generated central pad; the test must not replace it with a ring position.
-    admin.chat('/icerush join');
 
     guest = connect('IceRushGuest');
     await spawned(guest, 'Guest');
