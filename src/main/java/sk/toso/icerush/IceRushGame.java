@@ -1639,13 +1639,27 @@ public final class IceRushGame {
             if (player == null) continue;
             BoatEntity boat = playerBoats.get(participant.id);
             if (boat == null || boat.isRemoved()) {
+                // Never respawn a missing boat at the player's possibly-falling coordinates.
+                Vec3d safePosition = startPositions.get(0);
+                double nearestDistance = Double.MAX_VALUE;
+                for (Vec3d candidate : startPositions) {
+                    double dx = candidate.x - player.getX();
+                    double dz = candidate.z - player.getZ();
+                    double distance = dx * dx + dz * dz;
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        safePosition = candidate;
+                    }
+                }
                 boat = new BoatEntity(EntityType.BOAT, arenaWorld);
                 participant.appliedSpeedScale = 1.0;
                 participant.turboTicks = 0;
                 participant.turboActive = false;
-                boat.setPosition(player.getX(), player.getY() - 0.5, player.getZ());
+                boat.setPosition(safePosition);
                 arenaWorld.spawnEntity(boat);
                 playerBoats.put(participant.id, boat);
+                player.teleport(arenaWorld, safePosition.x, safePosition.y + 0.35, safePosition.z,
+                    player.getYaw(), 0.0F);
             }
             if (player.getVehicle() != boat) {
                 // Keep racers safely mounted if they press Shift over the open center.
