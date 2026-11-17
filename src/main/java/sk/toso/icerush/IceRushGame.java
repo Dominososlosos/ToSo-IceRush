@@ -9,7 +9,7 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.entity.decoration.InteractionEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.entity.mob.ZombieEntity;
+import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -491,26 +491,26 @@ public final class IceRushGame {
         for (int i = 0; i < actions.length; i++) {
             String tag = "icerush_button_" + actions[i];
             final String actionTag = tag;
-            List<ZombieEntity> existing = arenaWorld.getEntitiesByClass(ZombieEntity.class, searchBox,
-                zombie -> zombie.getCommandTags().contains(actionTag));
+            List<ArmorStandEntity> existing = arenaWorld.getEntitiesByClass(ArmorStandEntity.class, searchBox,
+                stand -> stand.getCommandTags().contains(actionTag));
             if (!existing.isEmpty()) continue;
 
             // Clickable character models are placed along the front edge of the lobby.
             double x = arenaCenter.getX() - 7.0 + i * 2.8;
             double z = arenaCenter.getZ() + 6.4;
-            ZombieEntity npc = EntityType.ZOMBIE.create(arenaWorld);
+            ArmorStandEntity npc = EntityType.ARMOR_STAND.create(arenaWorld);
             if (npc == null) continue;
             npc.refreshPositionAndAngles(x + 0.5, lobbyY + 1.0, z + 0.5, 180.0F, 0.0F);
-            npc.setAiDisabled(true);
             npc.setInvulnerable(true);
             npc.setSilent(true);
             npc.setNoGravity(true);
-            npc.setCanPickUpLoot(false);
+            npc.setArms(true);
+            npc.setHideBasePlate(true);
             ItemStack playerHead = new ItemStack(Items.PLAYER_HEAD);
             playerHead.getOrCreateNbt().putString("SkullOwner", "MHF_Steve");
             npc.equipStack(EquipmentSlot.HEAD, playerHead);
             npc.equipStack(EquipmentSlot.CHEST, new ItemStack(Items.DIAMOND_CHESTPLATE));
-            npc.equipStack(EquipmentSlot.LEGS, new ItemStack(Items.IRON_LEGGINGS));
+            npc.equipStack(EquipmentSlot.LEGS, new ItemStack(Items.DIAMOND_LEGGINGS));
             npc.equipStack(EquipmentSlot.FEET, new ItemStack(Items.DIAMOND_BOOTS));
             npc.setCustomName(Text.literal(labels[i]).formatted(colors[i], Formatting.BOLD));
             npc.setCustomNameVisible(true);
