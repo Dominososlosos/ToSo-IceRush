@@ -206,7 +206,7 @@ jobs:
             "countdownSeconds": 1,
             "minRideSeconds": 60,
             "maxRideSeconds": 60,
-            "parkingSeconds": 5,
+            "parkingSeconds": 60,
             "finishHoldSeconds": 5
           }
           EOF
