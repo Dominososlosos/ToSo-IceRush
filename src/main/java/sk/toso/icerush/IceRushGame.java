@@ -292,7 +292,7 @@ public final class IceRushGame {
                 for (int y = cy + 1; y <= cy + 6; y++) {
                     arenaWorld.setBlockState(new BlockPos(cx + x, y, cz + z), Blocks.AIR.getDefaultState());
                 }
-                // Solid packed-ice center plus a blue-ice driving ring.
+                // Blue-ice driving ring; the center is open except during parking.
                 BlockPos floor = new BlockPos(cx + x, cy, cz + z);
                 // The inner disk stays empty outside the parking phase.
                 arenaWorld.setBlockState(floor, radius < config.trackInnerRadius
@@ -984,7 +984,7 @@ public final class IceRushGame {
                 BlockPos pos = new BlockPos(cx + dx, cy, cz + dz);
                 parkingOriginalStates.putIfAbsent(pos, arenaWorld.getBlockState(pos));
                 arenaWorld.setBlockState(pos, Blocks.PACKED_ICE.getDefaultState());
-                parkingAnimationBlocks.add(pos);
+                // Center ice stays visible during parking; only parking pads animate.
             }
         }
         for (int i = 0; i < count; i++) {
