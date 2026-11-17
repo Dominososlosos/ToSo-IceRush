@@ -99,10 +99,12 @@ async function main() {
         bot.chat('/icerush setup');
         await waitFor(bot, /ICE RUSH aréna vytvorená/);
         await new Promise(resolve => setTimeout(resolve, 500));
+        const npcXOffsets = [-6.5, -3.7, -0.9, 1.9, 4.7, 7.5];
         const characters = Object.values(bot.entities).filter(entity =>
           entity.name === 'armor_stand'
           && Math.abs(entity.position.y - bot.entity.position.y) < 10
-          && Math.abs(entity.position.z - (arenaCenter.z + 6.9)) < 1.0);
+          && Math.abs(entity.position.z - (arenaCenter.z + 6.9)) < 0.75
+          && npcXOffsets.some(offset => Math.abs(entity.position.x - (arenaCenter.x + offset)) < 0.8));
         if (characters.length !== 6) throw new Error('Expected six non-villager lobby characters, found ' + characters.length);
         const villagers = Object.values(bot.entities).filter(entity =>
           entity.name === 'villager' && Math.abs(entity.position.y - bot.entity.position.y) < 10);
