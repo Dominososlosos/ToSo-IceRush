@@ -70,7 +70,11 @@ async function main() {
 
     // Join by clicking the first player-shaped lobby character, not by command.
     await new Promise(resolve => setTimeout(resolve, 500));
-    const lobbyCharacters = Object.values(admin.entities).filter(entity => entity.name === 'armor_stand');
+    const npcXOffsets = [-6.5, -3.7, -0.9, 1.9, 4.7, 7.5];
+    const lobbyCharacters = Object.values(admin.entities).filter(entity =>
+      entity.name === 'armor_stand'
+      && Math.abs(entity.position.z - (center.z + 6.9)) < 0.75
+      && npcXOffsets.some(offset => Math.abs(entity.position.x - (center.x + offset)) < 0.8));
     if (lobbyCharacters.length !== 6) throw new Error('Expected six lobby characters, found ' + lobbyCharacters.length);
     const joinStand = lobbyCharacters.sort((a, b) => a.position.x - b.position.x)[0];
     admin.activateEntity(joinStand);
