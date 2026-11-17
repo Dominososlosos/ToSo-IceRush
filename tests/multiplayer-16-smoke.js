@@ -99,6 +99,10 @@ async function main() {
         bot.chat('/icerush setup');
         await waitFor(bot, /ICE RUSH aréna vytvorená/);
         await new Promise(resolve => setTimeout(resolve, 500));
+        // Setup teleports the admin to the lobby directly above the exact arena centre.
+        arenaCenter.x = Math.floor(bot.entity.position.x);
+        arenaCenter.z = Math.floor(bot.entity.position.z);
+        arenaCenter.y = Math.floor(bot.entity.position.y) - 80;
         const npcXOffsets = [-6.5, -3.7, -0.9, 1.9, 4.7, 7.5];
         const characters = Object.values(bot.entities).filter(entity =>
           entity.name === 'armor_stand'
