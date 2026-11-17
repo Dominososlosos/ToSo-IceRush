@@ -61,17 +61,13 @@ async function main() {
       y: Math.floor(admin.entity.position.y),
       z: Math.floor(admin.entity.position.z)
     };
-    const parking = { x: center.x + 42.0, y: center.y, z: center.z + 0.5 };
+    // The first central 3x3 pad is centred two blocks diagonally from the arena centre.
+    const parking = { x: center.x - 1.5, y: center.y, z: center.z - 1.5 };
 
     admin.chat('/icerush setup');
     await waitFor(admin, /ICE RUSH aréna vytvorená/);
 
-    // Configure one deterministic pad at a real generated start-ring coordinate.
-    admin.chat(`/tp @s ${parking.x} ${parking.y} ${parking.z}`);
-    admin.chat('/icerush clearspots');
-    await waitFor(admin, /Všetky parkovacie miesta boli odstránené/);
-    admin.chat('/icerush addspot');
-    await waitFor(admin, /Parkovacie miesto #1 uložené/);
+    // Use the generated central pad; the test must not replace it with a ring position.
     admin.chat('/icerush join');
 
     guest = connect('IceRushGuest');
