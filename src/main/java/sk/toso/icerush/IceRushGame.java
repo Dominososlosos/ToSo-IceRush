@@ -503,7 +503,6 @@ public final class IceRushGame {
             npc.setInvulnerable(true);
             npc.setSilent(true);
             npc.setNoGravity(true);
-            npc.setArms(true);
             npc.setHideBasePlate(true);
             ItemStack playerHead = new ItemStack(Items.PLAYER_HEAD);
             playerHead.getOrCreateNbt().putString("SkullOwner", "MHF_Steve");
