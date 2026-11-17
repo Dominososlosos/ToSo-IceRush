@@ -691,11 +691,32 @@ public final class IceRushGame {
         return 1;
     }
 
+    private int countVisibleParkingBlocks() {
+        if (arenaWorld == null || state != State.PARKING) return 0;
+        int count = Math.min(Math.max(0, activeCount() - 1), parkingSpots.size());
+        int blocks = 0;
+        for (int i = 0; i < count; i++) {
+            Vec3d spot = parkingSpots.get(i);
+            BlockPos center = new BlockPos((int) Math.floor(spot.x), (int) Math.floor(spot.y) - 1,
+                (int) Math.floor(spot.z));
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (arenaWorld.getBlockState(center.add(dx, 0, dz)).isOf(Blocks.LIGHT_BLUE_CONCRETE)) blocks++;
+                }
+            }
+        }
+        return blocks;
+    }
+
     private int status(ServerCommandSource source) {
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
+        int activeParkingSpots = state == State.PARKING ? Math.max(0, activeCount() - 1) : 0;
+        int visibleParkingBlocks = countVisibleParkingBlocks();
         source.sendFeedback(() -> Text.literal("ICE RUSH | Stav: " + state + " | Kolo: " + round
             + " | Hráči: " + activeCount() + "/" + participants.size()
-            + " | Ready: " + readyCount + " | Parkovacie miesta: " + parkingSpots.size()), false);
+            + " | Ready: " + readyCount + " | Dostupné miesta: " + parkingSpots.size()
+            + " | Aktívne parkoviská: " + activeParkingSpots
+            + " | Bloky: " + visibleParkingBlocks + "/" + (activeParkingSpots * 9)), false);
         return 1;
     }
 
