@@ -1,4 +1,5 @@
 const mineflayer = require('mineflayer');
+const { Vec3 } = require('vec3');
 const fs = require('fs');
 
 const HOST = process.env.MC_HOST || '127.0.0.1';
@@ -79,9 +80,25 @@ async function main() {
     guest.chat('/icerush ready');
     await waitFor(admin, /ICE RUSH sa začína!/);
     await waitFor(admin, /ŠTART! Kolo 1 — jazda!/);
+    await new Promise(resolve => setTimeout(resolve, 600));
+    if (!admin.vehicle || !guest.vehicle) {
+      throw new Error('A competitor is not actually mounted in a boat after the race starts');
+    }
     await waitFor(admin, /PARKOVANIE!/);
 
-    // Move the admin's nearest boat onto the one configured pad; the other player misses it.
+    // A two-player match must show exactly one solid 3x3 pad in the centre (9 blocks).
+    let centralPadBlocks = 0;
+    for (let x = center.x - 8; x <= center.x + 8; x++) {
+      for (let z = center.z - 8; z <= center.z + 8; z++) {
+        const block = admin.blockAt(new Vec3(x, center.y - 1, z));
+        if (block && block.name === 'light_blue_concrete') centralPadBlocks++;
+      }
+    }
+    if (centralPadBlocks !== 9) {
+      throw new Error(`Expected exactly one central 3x3 parking pad (9 blocks), found ${centralPadBlocks}`);
+    }
+
+    // Move the admin's nearest boat onto the generated central pad; the other player misses it.
     admin.chat(`/tp @e[type=minecraft:boat,sort=nearest,limit=1] ${parking.x} ${parking.y} ${parking.z}`);
     await waitFor(admin, /IceRushGuest vypadáva z kola!/);
     await waitFor(admin, /IceRushAdmin VYHRÁVA ICE RUSH!/);
