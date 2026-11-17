@@ -1442,7 +1442,9 @@ public final class IceRushGame {
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
-            if (player != null && player.getVehicle() instanceof BoatEntity boat && boat.getY() < arenaCenter.getY() - 2) {
+            BoatEntity assignedBoat = playerBoats.get(participant.id);
+            if (player != null && assignedBoat != null && player.getVehicle() == assignedBoat
+                && assignedBoat.hasPassenger(player) && assignedBoat.getY() < arenaCenter.getY() - 2) {
                 int placeBeforeElimination = activeCount();
                 if (placeBeforeElimination == 2) participant.points += 60;
                 else if (placeBeforeElimination == 3) participant.points += 40;
