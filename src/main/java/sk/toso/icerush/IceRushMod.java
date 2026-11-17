@@ -26,7 +26,7 @@ public final class IceRushMod implements ModInitializer {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> game.onPlayerDisconnect(handler.player.getUuid(), server));
         UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
             // Command tags are server-side data; identify clickable lobby characters by entity type.
-            if (world.isClient) return entity instanceof net.minecraft.entity.mob.ZombieEntity
+            if (world.isClient) return entity instanceof net.minecraft.entity.decoration.ArmorStandEntity
                 ? ActionResult.SUCCESS : ActionResult.PASS;
             if (!game.isLobbyButton(entity)) return ActionResult.PASS;
             if (player instanceof ServerPlayerEntity serverPlayer) game.handleLobbyButton(serverPlayer, entity);
