@@ -120,14 +120,14 @@ async function main() {
 
     // Ask the server itself to count the real 3x3 concrete blocks.
     admin.chat('/icerush status');
-    await waitFor(admin, /Aktívne parkoviská: 1.*Bloky: 9\\/9/);
+    await waitFor(admin, /Aktívne parkoviská: 1.*Bloky: 9\/9/);
 
     // Move the admin's nearest boat onto the generated central pad; the other player misses it.
     admin.chat(`/tp @e[type=minecraft:boat,sort=nearest,limit=1] ${parking.x} ${parking.y} ${parking.z}`);
     await waitFor(admin, /IceRushGuest vypadáva z kola!/);
     await waitFor(admin, /IceRushAdmin VYHRÁVA ICE RUSH!/);
     admin.chat('/icerush status');
-    await waitFor(admin, /Aktívne parkoviská: 0.*Bloky: 0\\/0/);
+    await waitFor(admin, /Aktívne parkoviská: 0.*Bloky: 0\/0/);
 
     await new Promise(resolve => setTimeout(resolve, 1800));
     admin.chat('/icerush stats');
