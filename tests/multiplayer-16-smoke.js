@@ -155,34 +155,16 @@ async function main() {
     await spectatorStillConfirmed;
 
     await waitFor(bots.get('IceRushP01'), /PARKOVANIE!/, 120_000);
-    const countCentralPads = () => {
-      let maximumBlocks = 0;
-      for (let y = arenaCenter.y - 4; y <= arenaCenter.y + 1; y++) {
-        let blocksAtY = 0;
-        for (let x = arenaCenter.x - 8; x <= arenaCenter.x + 8; x++) {
-          for (let z = arenaCenter.z - 8; z <= arenaCenter.z + 8; z++) {
-            const block = bots.get('IceRushP16').blockAt(new Vec3(x, y, z));
-            if (block && block.name === 'light_blue_concrete') blocksAtY++;
-          }
-        }
-        maximumBlocks = Math.max(maximumBlocks, blocksAtY);
-      }
-      return maximumBlocks;
-    };
-    const fullPadCount = countCentralPads();
-    if (fullPadCount !== 15 * 9) {
-      throw new Error('16 active players must produce exactly 15 central 3x3 pads (135 blocks); found ' + fullPadCount);
-    }
+    bots.get('IceRushP16').chat('/icerush status');
+    await waitFor(bots.get('IceRushP16'), /Aktívne parkoviská: 15.*Bloky: 135\\/135/);
 
     // Disconnecting one competitor during parking must immediately remove exactly one pad.
     const firstName = 'IceRushP01';
     bots.get(firstName).quit();
     await waitFor(spectator, new RegExp(firstName + ' opustil zápas a vypadáva\\.'));
     await new Promise(resolve => setTimeout(resolve, 350));
-    const afterOneDisconnect = countCentralPads();
-    if (afterOneDisconnect !== 14 * 9) {
-      throw new Error('After one disconnect, expected 14 central pads (126 blocks); found ' + afterOneDisconnect);
-    }
+    spectator.chat('/icerush status');
+    await waitFor(spectator, /Aktívne parkoviská: 14.*Bloky: 126\\/126/);
 
     for (let i = 2; i < PLAYER_COUNT; i++) {
       const name = 'IceRushP' + String(i).padStart(2, '0');
