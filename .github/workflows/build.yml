@@ -204,8 +204,8 @@ jobs:
             "minPlayers": 2,
             "maxPlayers": 16,
             "countdownSeconds": 1,
-            "minRideSeconds": 60,
-            "maxRideSeconds": 60,
+            "minRideSeconds": 15,
+            "maxRideSeconds": 15,
             "parkingSeconds": 60,
             "finishHoldSeconds": 5
           }
