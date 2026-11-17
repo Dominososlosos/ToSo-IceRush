@@ -9,6 +9,7 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.entity.decoration.InteractionEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -137,6 +138,8 @@ public final class IceRushGame {
                 .executes(ctx -> setupArena(ctx.getSource())))
             .then(CommandManager.literal("lobbysetup").requires(s -> s.hasPermissionLevel(2))
                 .executes(ctx -> setupLobbyControls(ctx.getSource())))
+            .then(CommandManager.literal("repair").requires(s -> s.hasPermissionLevel(2))
+                .executes(ctx -> repairArena(ctx.getSource())))
         );
     }
 
@@ -281,12 +284,11 @@ public final class IceRushGame {
                 for (int y = cy + 1; y <= cy + 6; y++) {
                     arenaWorld.setBlockState(new BlockPos(cx + x, y, cz + z), Blocks.AIR.getDefaultState());
                 }
+                // Solid packed-ice center plus a blue-ice driving ring.
                 BlockPos floor = new BlockPos(cx + x, cy, cz + z);
-                if (radius >= config.trackInnerRadius) {
-                    arenaWorld.setBlockState(floor, Blocks.BLUE_ICE.getDefaultState());
-                } else {
-                    arenaWorld.setBlockState(floor, Blocks.AIR.getDefaultState());
-                }
+                arenaWorld.setBlockState(floor, radius < config.trackInnerRadius
+                    ? Blocks.PACKED_ICE.getDefaultState()
+                    : Blocks.BLUE_ICE.getDefaultState());
             }
         }
         // Vyvýšená lobby plošina 80 blokov nad úrovňou dráhy.
@@ -383,12 +385,60 @@ public final class IceRushGame {
         }
     }
 
+    private int repairArena(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        if (state != State.WAITING) {
+            source.sendError(Text.literal("Opravu arény môžeš spustiť iba v lobby."));
+            return 0;
+        }
+        source.getPlayerOrThrow();
+        if (arenaWorld == null || arenaCenter == null) {
+            if (!config.arenaConfigured || config.arenaDimension.isBlank()) {
+                source.sendError(Text.literal("Aréna ešte nie je nastavená. Použi /icerush setup."));
+                return 0;
+            }
+            Identifier dimension = Identifier.tryParse(config.arenaDimension);
+            ServerWorld restored = dimension == null ? null : source.getServer().getWorld(RegistryKey.of(RegistryKeys.WORLD, dimension));
+            if (restored == null) {
+                source.sendError(Text.literal("Nepodarilo sa obnoviť svet uloženej arény."));
+                return 0;
+            }
+            arenaWorld = restored;
+            arenaCenter = new BlockPos(config.arenaX, config.arenaY, config.arenaZ);
+            lobbyPosition = new Vec3d(config.arenaX + 0.5, config.arenaY + config.arenaLobbyHeight, config.arenaZ + 0.5);
+        }
+        int cx = arenaCenter.getX(), cy = arenaCenter.getY() - 1, cz = arenaCenter.getZ();
+        for (int x = -(int)Math.ceil(arenaOuterRadius()); x <= (int)Math.ceil(arenaOuterRadius()); x++) {
+            for (int z = -(int)Math.ceil(arenaOuterRadius()); z <= (int)Math.ceil(arenaOuterRadius()); z++) {
+                double radius = Math.sqrt((double)x * x + (double)z * z);
+                if (radius > arenaOuterRadius()) continue;
+                for (int y = cy + 1; y <= cy + 7; y++) {
+                    arenaWorld.setBlockState(new BlockPos(cx + x, y, cz + z), Blocks.AIR.getDefaultState());
+                }
+                arenaWorld.setBlockState(new BlockPos(cx + x, cy, cz + z), radius < arenaInnerRadius()
+                    ? Blocks.PACKED_ICE.getDefaultState() : Blocks.BLUE_ICE.getDefaultState());
+            }
+        }
+        initializeArenaPositions();
+        buildLobbyControls();
+        lobbyBoardBuilt = false;
+        updateLobbyLeaderboard(source.getServer());
+        for (ServerPlayerEntity player : source.getServer().getPlayerManager().getPlayerList()) {
+            if (player.getServerWorld() == arenaWorld) {
+                player.changeGameMode(GameMode.ADVENTURE);
+                teleportToLobby(player);
+                sendLobbyMenu(player);
+            }
+        }
+        source.sendFeedback(() -> Text.literal("ToSo IceRush: ľadová plocha, stred, parkoviská a lobby boli obnovené.").formatted(Formatting.GREEN, Formatting.BOLD), true);
+        return 1;
+    }
+
     private int setupLobbyControls(ServerCommandSource source) {
         if (arenaWorld == null || lobbyPosition == null) {
             source.sendError(Text.literal("Najprv vytvor alebo obnov arénu príkazom /icerush setup."));
             return 0;
         }
-        int before = arenaWorld.getEntitiesByClass(InteractionEntity.class,
+        int before = arenaWorld.getEntitiesByClass(Entity.class,
             new Box(arenaCenter.getX() - 10, lobbyPosition.y - 2, arenaCenter.getZ() - 2,
                     arenaCenter.getX() + 10, lobbyPosition.y + 5, arenaCenter.getZ() + 10),
             entity -> entity.getCommandTags().contains("icerush_button_join")).size();
@@ -403,50 +453,49 @@ public final class IceRushGame {
         if (arenaWorld == null || arenaCenter == null) return;
         int lobbyY = arenaCenter.getY() - 1 + config.arenaLobbyHeight;
         buildLobbyDecor(lobbyY);
-
-        String[] actions = {"join", "ready", "rules", "top", "stats", "lastwinner"};
-        String[] labels = {"▶ JOIN", "✓ READY", "PRAVIDLÁ", "TOP 10", "ŠTATISTIKY", "VÍŤAZ"};
-        net.minecraft.block.Block[] colors = {Blocks.CYAN_CARPET, Blocks.LIME_CARPET, Blocks.LIGHT_BLUE_CARPET,
-            Blocks.BLUE_CARPET, Blocks.LIGHT_BLUE_CARPET, Blocks.WHITE_CARPET};
         Box searchBox = new Box(arenaCenter.getX() - 10, lobbyY - 1, arenaCenter.getZ() - 8,
             arenaCenter.getX() + 10, lobbyY + 7, arenaCenter.getZ() + 9);
+
+        // Remove old carpet-button interaction entities and their floating labels.
+        List<Entity> oldControls = arenaWorld.getEntitiesByClass(Entity.class, searchBox,
+            entity -> entity.getCommandTags().stream().anyMatch(tag ->
+                tag.startsWith("icerush_button_") || tag.startsWith("icerush_lobby_label_")));
+        for (Entity old : oldControls) old.discard();
+
+        String[] actions = {"join", "ready", "rules", "top", "stats", "lastwinner"};
+        String[] labels = {"▶ VSTÚPIŤ", "✓ READY", "PRAVIDLÁ", "TOP 10", "ŠTATISTIKY", "POSLEDNÝ VÍŤAZ"};
+        Formatting[] colors = {Formatting.AQUA, Formatting.GREEN, Formatting.YELLOW,
+            Formatting.GOLD, Formatting.LIGHT_PURPLE, Formatting.WHITE};
         for (int i = 0; i < actions.length; i++) {
             String tag = "icerush_button_" + actions[i];
-            String labelTag = "icerush_lobby_label_" + actions[i];
-            int x = arenaCenter.getX() - 5 + i * 2;
-            int z = arenaCenter.getZ() + 5;
-            arenaWorld.setBlockState(new BlockPos(x, lobbyY, z), colors[i].getDefaultState());
+            final String actionTag = tag;
+            List<VillagerEntity> existing = arenaWorld.getEntitiesByClass(VillagerEntity.class, searchBox,
+                villager -> villager.getCommandTags().contains(actionTag));
+            if (!existing.isEmpty()) continue;
 
-            boolean buttonExists = !arenaWorld.getEntitiesByClass(InteractionEntity.class, searchBox,
-                entity -> entity.getCommandTags().contains(tag)).isEmpty();
-            if (!buttonExists) {
-                InteractionEntity button = new InteractionEntity(EntityType.INTERACTION, arenaWorld);
-                button.setPosition(x + 0.5, lobbyY + 1.0, z + 0.5);
-                button.setNoGravity(true);
-                button.setInvulnerable(true);
-                button.addCommandTag(tag);
-                arenaWorld.spawnEntity(button);
-            }
-
-            boolean labelExists = !arenaWorld.getEntitiesByClass(ArmorStandEntity.class, searchBox,
-                entity -> entity.getCommandTags().contains(labelTag)).isEmpty();
-            if (!labelExists) {
-                ArmorStandEntity label = new ArmorStandEntity(EntityType.ARMOR_STAND, arenaWorld);
-                label.setPosition(x + 0.5, lobbyY + 1.35, z + 2.0);
-                label.setCustomName(Text.literal(labels[i]).formatted(Formatting.BOLD, Formatting.WHITE));
-                label.setCustomNameVisible(true);
-                label.setInvisible(true);
-                label.setNoGravity(true);
-                label.addCommandTag(labelTag);
-                arenaWorld.spawnEntity(label);
-            }
+            int column = i % 3;
+            int row = i / 3;
+            double x = arenaCenter.getX() - 4.0 + column * 4.0;
+            double z = arenaCenter.getZ() + 1.0 + row * 3.0;
+            VillagerEntity npc = EntityType.VILLAGER.create(arenaWorld);
+            if (npc == null) continue;
+            npc.refreshPositionAndAngles(x + 0.5, lobbyY + 1.0, z + 0.5, 180.0F, 0.0F);
+            npc.setAiDisabled(true);
+            npc.setInvulnerable(true);
+            npc.setSilent(true);
+            npc.setNoGravity(true);
+            npc.setCustomName(Text.literal(labels[i]).formatted(colors[i], Formatting.BOLD));
+            npc.setCustomNameVisible(true);
+            npc.addCommandTag(tag);
+            arenaWorld.spawnEntity(npc);
         }
+
         ensureLobbyText("icerush_lobby_title", arenaCenter.getX() + 0.5, lobbyY + 3.4, arenaCenter.getZ() - 5.5,
             Text.literal("TOSO  •  ICE RUSH").formatted(Formatting.AQUA, Formatting.BOLD));
         ensureLobbyText("icerush_lobby_subtitle", arenaCenter.getX() + 0.5, lobbyY + 2.8, arenaCenter.getZ() - 5.5,
             Text.literal("ĽADOVÁ ARÉNA  |  AŽ 16 HRÁČOV").formatted(Formatting.WHITE));
         ensureLobbyText("icerush_lobby_hint", arenaCenter.getX() + 0.5, lobbyY + 1.7, arenaCenter.getZ() + 7.0,
-            Text.literal("VSTÚP NA FAREBNÉ TLAČIDLO A ZAČNI").formatted(Formatting.YELLOW, Formatting.BOLD));
+            Text.literal("KLIKNI NA POSTAVIČKU A VYBER SI AKCIU").formatted(Formatting.YELLOW, Formatting.BOLD));
     }
 
     private void buildLobbyDecor(int lobbyY) {
@@ -478,10 +527,7 @@ public final class IceRushGame {
                 arenaWorld.setBlockState(new BlockPos(cx + sx, lobbyY + 4, cz + sz), Blocks.SEA_LANTERN.getDefaultState());
             }
         }
-        for (int x = -4; x <= 4; x++) {
-            arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 1, cz - 7), Blocks.LIGHT_BLUE_CARPET.getDefaultState());
-            arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 1, cz + 7), Blocks.LIGHT_BLUE_CARPET.getDefaultState());
-        }
+        // Lobby actions are represented by clickable NPCs instead of carpet pads.
     }
 
     private void ensureLobbyText(String tag, double x, double y, double z, Text text) {
@@ -891,7 +937,7 @@ public final class IceRushGame {
         int count = Math.min(parkingSpots.size(), Math.max(0, activeCount() - 1));
         for (int i = 0; i < count; i++) {
             Vec3d spot = parkingSpots.get(i);
-            BlockPos center = new BlockPos((int) Math.floor(spot.x), arenaCenter.getY() - 1, (int) Math.floor(spot.z));
+            BlockPos center = new BlockPos((int) Math.floor(spot.x), (int) Math.floor(spot.y) - 1, (int) Math.floor(spot.z));
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dz = -1; dz <= 1; dz++) {
                     BlockPos pos = center.add(dx, 0, dz);
@@ -1464,8 +1510,14 @@ public final class IceRushGame {
                 boat.setPosition(pos);
                 boat.setVelocity(Vec3d.ZERO);
             }
-            player.teleport(arenaWorld, pos.x, pos.y + 1.0, pos.z, player.getYaw(), 0.0F);
-            player.startRiding(boat, true);
+            boat.setYaw(player.getYaw());
+            boat.setVelocity(Vec3d.ZERO);
+            player.stopRiding();
+            player.teleport(arenaWorld, pos.x, pos.y + 0.15, pos.z, player.getYaw(), 0.0F);
+            if (!player.startRiding(boat, true)) {
+                player.teleport(arenaWorld, pos.x, pos.y + 0.6, pos.z, player.getYaw(), 0.0F);
+                player.startRiding(boat, true);
+            }
         }
     }
 
@@ -1494,7 +1546,13 @@ public final class IceRushGame {
             if (player == null) continue;
             BoatEntity boat = playerBoats.get(participant.id);
             if (boat != null && !boat.isRemoved()) {
-                if (player.getVehicle() != boat) player.startRiding(boat, true);
+                // Re-seat only players who are actually on foot; don't interfere with another vehicle.
+            if (player.getVehicle() == null) {
+                if (!player.startRiding(boat, true)) {
+                    player.teleport(arenaWorld, boat.getX(), boat.getY() + 0.6, boat.getZ(), boat.getYaw(), 0.0F);
+                    player.startRiding(boat, true);
+                }
+            }
                 continue;
             }
             Vec3d pos = freeStarts.isEmpty()
@@ -1507,8 +1565,13 @@ public final class IceRushGame {
             participant.appliedSpeedScale = 1.0;
             participant.turboTicks = 0;
             participant.turboActive = false;
-            player.teleport(arenaWorld, pos.x, pos.y + 1.0, pos.z, player.getYaw(), 0.0F);
-            player.startRiding(boat, true);
+            boat.setYaw(player.getYaw());
+            player.stopRiding();
+            player.teleport(arenaWorld, pos.x, pos.y + 0.15, pos.z, player.getYaw(), 0.0F);
+            if (!player.startRiding(boat, true)) {
+                player.teleport(arenaWorld, pos.x, pos.y + 0.6, pos.z, player.getYaw(), 0.0F);
+                player.startRiding(boat, true);
+            }
         }
     }
 
@@ -1668,14 +1731,31 @@ public final class IceRushGame {
     }
 
     private void sendLobbyMenu(ServerPlayerEntity player) {
-        MutableText menu = Text.literal("ICE RUSH  |  ");
-        menu.append(Text.literal("[JOIN]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush join"))));
-        menu.append(Text.literal("  [READY]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush ready"))));
-        menu.append(Text.literal("  [PRAVIDLÁ]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush rules"))));
-        menu.append(Text.literal("  [TOP 10]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush top"))));
-        menu.append(Text.literal("  [ŠTATISTIKY]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush stats"))));
-        menu.append(Text.literal("  [POSLEDNÝ VÍŤAZ]").styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/icerush lastwinner"))));
-        player.sendMessage(menu, false);
+        player.sendMessage(Text.literal("╔══════════════════════════════════╗").formatted(Formatting.AQUA, Formatting.BOLD), false);
+        player.sendMessage(Text.literal("       TOSO  •  ICE RUSH").formatted(Formatting.AQUA, Formatting.BOLD), false);
+        player.sendMessage(Text.literal("  Ľadová aréna  •  až 16 hráčov").formatted(Formatting.WHITE), false);
+        player.sendMessage(Text.literal("╚══════════════════════════════════╝").formatted(Formatting.AQUA, Formatting.BOLD), false);
+        player.sendMessage(Text.literal("  Vyber si akciu kliknutím na tlačidlo:").formatted(Formatting.GRAY), false);
+        MutableText first = Text.empty();
+        first.append(chatAction(" ▶ VSTÚPIŤ ", "/icerush join", Formatting.AQUA));
+        first.append(Text.literal("  "));
+        first.append(chatAction(" ✓ READY ", "/icerush ready", Formatting.GREEN));
+        first.append(Text.literal("  "));
+        first.append(chatAction(" 📘 PRAVIDLÁ ", "/icerush rules", Formatting.YELLOW));
+        player.sendMessage(first, false);
+        MutableText second = Text.empty();
+        second.append(chatAction(" 🏆 TOP 10 ", "/icerush top", Formatting.GOLD));
+        second.append(Text.literal("  "));
+        second.append(chatAction(" 📊 ŠTATISTIKY ", "/icerush stats", Formatting.LIGHT_PURPLE));
+        second.append(Text.literal("  "));
+        second.append(chatAction(" 👑 VÍŤAZ ", "/icerush lastwinner", Formatting.WHITE));
+        player.sendMessage(second, false);
+        player.sendMessage(Text.literal("Tip: po vstupe stlač READY. Na štart treba 80 % pripravených hráčov.").formatted(Formatting.GRAY), false);
+    }
+
+    private MutableText chatAction(String label, String command, Formatting color) {
+        return Text.literal(label).styled(style -> style.withColor(color).withBold(true)
+            .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command)));
     }
 
     private int activeCount() {
