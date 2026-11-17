@@ -1125,9 +1125,14 @@ public final class IceRushGame {
         if (!lobbyBoardBuilt) {
             for (int dy = 1; dy <= 7; dy++) {
                 for (int dz = -5; dz <= 5; dz++) {
-                    arenaWorld.setBlockState(new BlockPos(arenaCenter.getX() + 7, lobbyY + dy, arenaCenter.getZ() + dz),
-                        Blocks.BLUE_CONCRETE.getDefaultState());
+                    BlockState boardBlock = Math.abs(dz) == 5 || dy == 7
+                        ? Blocks.CYAN_CONCRETE.getDefaultState() : Blocks.BLUE_CONCRETE.getDefaultState();
+                    arenaWorld.setBlockState(new BlockPos(arenaCenter.getX() + 7, lobbyY + dy, arenaCenter.getZ() + dz), boardBlock);
                 }
+            }
+            for (int dz : new int[]{-5, 5}) {
+                arenaWorld.setBlockState(new BlockPos(arenaCenter.getX() + 7, lobbyY + 7, arenaCenter.getZ() + dz),
+                    Blocks.SEA_LANTERN.getDefaultState());
             }
             lobbyBoardBuilt = true;
         }
@@ -1163,7 +1168,11 @@ public final class IceRushGame {
                 String name = online == null
                     ? (entry.getValue().playerName.isBlank() ? entry.getKey().toString().substring(0, 8) : entry.getValue().playerName)
                     : online.getName().getString();
-                line = Text.literal(rowIndex + ". " + name + " — " + entry.getValue().points + " b").formatted(Formatting.WHITE);
+                if (name.length() > 12) name = name.substring(0, 11) + "…";
+                Formatting rankColor = rowIndex == 1 ? Formatting.GOLD
+                    : rowIndex == 2 ? Formatting.GRAY : rowIndex == 3 ? Formatting.YELLOW : Formatting.WHITE;
+                line = Text.literal(rowIndex + ". " + name + " — " + entry.getValue().points + " b")
+                    .formatted(rankColor, Formatting.BOLD);
             } else {
                 line = Text.literal(rowIndex + ". —").formatted(Formatting.DARK_GRAY);
             }
