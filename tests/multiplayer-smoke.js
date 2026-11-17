@@ -84,6 +84,10 @@ async function main() {
     if (!admin.vehicle || !guest.vehicle) {
       throw new Error('A competitor is not actually mounted in a boat after the race starts');
     }
+    // Simulate Shift/dismount: the server must safely remount the competitor.
+    admin.dismount();
+    await new Promise(resolve => setTimeout(resolve, 600));
+    if (!admin.vehicle) throw new Error('The player remained dismounted after the server seat-repair tick');
     await waitFor(admin, /PARKOVANIE!/);
 
     // A two-player match must show exactly one solid 3x3 pad in the centre (9 blocks).
