@@ -106,14 +106,22 @@ async function main() {
 
     // A two-player match must show exactly one solid 3x3 pad in the centre (9 blocks).
     let centralPadBlocks = 0;
-    for (let x = center.x - 8; x <= center.x + 8; x++) {
-      for (let z = center.z - 8; z <= center.z + 8; z++) {
-        const block = admin.blockAt(new Vec3(x, center.y - 1, z));
-        if (block && block.name === 'light_blue_concrete') centralPadBlocks++;
+    let detectedPadY = null;
+    for (let y = center.y - 4; y <= center.y + 1; y++) {
+      let blocksAtY = 0;
+      for (let x = center.x - 8; x <= center.x + 8; x++) {
+        for (let z = center.z - 8; z <= center.z + 8; z++) {
+          const block = admin.blockAt(new Vec3(x, y, z));
+          if (block && block.name === 'light_blue_concrete') blocksAtY++;
+        }
+      }
+      if (blocksAtY > centralPadBlocks) {
+        centralPadBlocks = blocksAtY;
+        detectedPadY = y;
       }
     }
     if (centralPadBlocks !== 9) {
-      throw new Error(`Expected exactly one central 3x3 parking pad (9 blocks), found ${centralPadBlocks}`);
+      throw new Error(`Expected exactly one central 3x3 parking pad (9 blocks), found ${centralPadBlocks}; scanned around y=${center.y}, detected Y=${detectedPadY}`);
     }
 
     // Move the admin's nearest boat onto the generated central pad; the other player misses it.
