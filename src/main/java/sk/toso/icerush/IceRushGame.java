@@ -294,9 +294,12 @@ public final class IceRushGame {
                 }
                 // Solid packed-ice center plus a blue-ice driving ring.
                 BlockPos floor = new BlockPos(cx + x, cy, cz + z);
-                arenaWorld.setBlockState(floor, radius < config.trackInnerRadius || radius > config.trackOuterRadius
-                    ? Blocks.PACKED_ICE.getDefaultState()
-                    : Blocks.BLUE_ICE.getDefaultState());
+                // The inner disk stays empty outside the parking phase.
+                arenaWorld.setBlockState(floor, radius < config.trackInnerRadius
+                    ? Blocks.AIR.getDefaultState()
+                    : radius > config.trackOuterRadius
+                        ? Blocks.PACKED_ICE.getDefaultState()
+                        : Blocks.BLUE_ICE.getDefaultState());
             }
         }
         // Vyvýšená lobby plošina 80 blokov nad úrovňou dráhy.
@@ -441,8 +444,11 @@ public final class IceRushGame {
                     arenaWorld.setBlockState(new BlockPos(cx + x, y, cz + z), Blocks.AIR.getDefaultState());
                 }
                 arenaWorld.setBlockState(new BlockPos(cx + x, cy, cz + z),
-                    radius < arenaInnerRadius() || radius > arenaOuterRadius()
-                        ? Blocks.PACKED_ICE.getDefaultState() : Blocks.BLUE_ICE.getDefaultState());
+                    radius < arenaInnerRadius()
+                        ? Blocks.AIR.getDefaultState()
+                        : radius > arenaOuterRadius()
+                            ? Blocks.PACKED_ICE.getDefaultState()
+                            : Blocks.BLUE_ICE.getDefaultState());
             }
         }
         initializeArenaPositions();
@@ -961,7 +967,26 @@ public final class IceRushGame {
     private void showParkingPads() {
         hideParkingPads();
         if (arenaWorld == null || arenaCenter == null) return;
-        int count = Math.min(parkingSpots.size(), Math.max(0, activeCount() - 1));
+        int count = Math.max(0, activeCount() - 1);
+        if (parkingSpots.size() < count) {
+            IceRushMod.LOGGER.error("ICE RUSH has {} parking positions but {} are required for {} active players",
+                parkingSpots.size(), count, activeCount());
+            count = parkingSpots.size();
+        }
+        // Reveal the center only while PARKING is active.
+        int cx = arenaCenter.getX();
+        int cy = arenaCenter.getY() - 1;
+        int cz = arenaCenter.getZ();
+        int inner = (int) Math.ceil(arenaInnerRadius());
+        for (int dx = -inner; dx <= inner; dx++) {
+            for (int dz = -inner; dz <= inner; dz++) {
+                if ((double) dx * dx + (double) dz * dz >= arenaInnerRadius() * arenaInnerRadius()) continue;
+                BlockPos pos = new BlockPos(cx + dx, cy, cz + dz);
+                parkingOriginalStates.putIfAbsent(pos, arenaWorld.getBlockState(pos));
+                arenaWorld.setBlockState(pos, Blocks.PACKED_ICE.getDefaultState());
+                parkingAnimationBlocks.add(pos);
+            }
+        }
         for (int i = 0; i < count; i++) {
             Vec3d spot = parkingSpots.get(i);
             BlockPos center = new BlockPos((int) Math.floor(spot.x), (int) Math.floor(spot.y) - 1, (int) Math.floor(spot.z));
@@ -1167,7 +1192,7 @@ public final class IceRushGame {
             "Hráči: " + playerLabel,
             "READY: " + readyLabel,
             "Kolo: " + round + " | Čas: " + timeLabel,
-            "Parkoviská: " + parkingSpots.size()
+            "Parkoviská: " + (state == State.PARKING ? Math.max(0, activeCount() - 1) : "—")
         };
 
         // Invisible unique holders keep the sidebar safe for accents, spaces and formatting.
@@ -1574,13 +1599,16 @@ public final class IceRushGame {
             if (player == null) continue;
             BoatEntity boat = playerBoats.get(participant.id);
             if (boat != null && !boat.isRemoved()) {
-                // Re-seat only players who are actually on foot; don't interfere with another vehicle.
-            if (player.getVehicle() == null) {
-                if (!player.startRiding(boat, true)) {
-                    player.teleport(arenaWorld, boat.getX(), boat.getY() + 0.6, boat.getZ(), boat.getYaw(), 0.0F);
-                    player.startRiding(boat, true);
+                if (player.getVehicle() != boat) {
+                    player.stopRiding();
+                    player.teleport(arenaWorld, boat.getX(), boat.getY() + 0.35, boat.getZ(),
+                        boat.getYaw(), 0.0F);
+                    if (!player.startRiding(boat, true)) {
+                        player.teleport(arenaWorld, boat.getX(), boat.getY() + 0.8, boat.getZ(),
+                            boat.getYaw(), 0.0F);
+                        player.startRiding(boat, true);
+                    }
                 }
-            }
                 continue;
             }
             Vec3d pos = freeStarts.isEmpty()
@@ -1619,7 +1647,17 @@ public final class IceRushGame {
                 arenaWorld.spawnEntity(boat);
                 playerBoats.put(participant.id, boat);
             }
-            if (player.getVehicle() != boat) player.startRiding(boat, true);
+            if (player.getVehicle() != boat) {
+                // Keep racers safely mounted if they press Shift over the open center.
+                player.stopRiding();
+                player.teleport(arenaWorld, boat.getX(), boat.getY() + 0.35, boat.getZ(),
+                    boat.getYaw(), 0.0F);
+                if (!player.startRiding(boat, true)) {
+                    player.teleport(arenaWorld, boat.getX(), boat.getY() + 0.8, boat.getZ(),
+                        boat.getYaw(), 0.0F);
+                    player.startRiding(boat, true);
+                }
+            }
         }
     }
 
