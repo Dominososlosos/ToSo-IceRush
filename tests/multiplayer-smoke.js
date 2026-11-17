@@ -93,11 +93,11 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 1800));
     admin.chat('/icerush stats');
     await waitFor(admin, /Výhry: 1.*Hry: 1/);
-    await waitFor(admin, /Úspešnosť: 100\\.0%.*Prehry: 0/);
+    await waitFor(admin, /Úspešnosť: 100\.0%.*Prehry: 0/);
     await waitFor(admin, /Celkové body: 115/);
     guest.chat('/icerush stats');
     await waitFor(guest, /Výhry: 0.*Hry: 1/);
-    await waitFor(guest, /Úspešnosť: 0\\.0%.*Prehry: 1/);
+    await waitFor(guest, /Úspešnosť: 0\.0%.*Prehry: 1/);
     await waitFor(guest, /Celkové body: 60/);
     fs.writeFileSync('server/config/multiplayer-test-result.txt', 'PASS: two clients joined, readied, raced, parked/eliminated, winner declared; admin 1W/115 points, guest 1L/60 points.\\n');
     console.log('PASS: two real protocol clients joined, readied, raced, parked/eliminated, declared a winner, and persisted both player records.');
