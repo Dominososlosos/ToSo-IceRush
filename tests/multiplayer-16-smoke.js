@@ -133,7 +133,7 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 1200));
     survivor.chat('/icerush stats');
     await waitFor(survivor, /Výhry: 1.*Hry: 1/);
-    await waitFor(survivor, /Úspešnosť: 100\\.0%.*Prehry: 0/);
+    await waitFor(survivor, /Úspešnosť: 100\.0%.*Prehry: 0/);
 
     const stats = JSON.parse(fs.readFileSync('server/config/icerush-stats.json', 'utf8'));
     for (let i = 1; i <= PLAYER_COUNT; i++) {
