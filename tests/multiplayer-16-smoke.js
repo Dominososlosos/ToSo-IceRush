@@ -156,7 +156,7 @@ async function main() {
 
     await waitFor(bots.get('IceRushP01'), /PARKOVANIE!/, 120_000);
     bots.get('IceRushP16').chat('/icerush status');
-    await waitFor(bots.get('IceRushP16'), /Aktívne parkoviská: 15.*Bloky: 135\\/135/);
+    await waitFor(bots.get('IceRushP16'), /Aktívne parkoviská: 15.*Bloky: 135\/135/);
 
     // Disconnecting one competitor during parking must immediately remove exactly one pad.
     const firstName = 'IceRushP01';
@@ -164,7 +164,7 @@ async function main() {
     await waitFor(spectator, new RegExp(firstName + ' opustil zápas a vypadáva\\.'));
     await new Promise(resolve => setTimeout(resolve, 350));
     spectator.chat('/icerush status');
-    await waitFor(spectator, /Aktívne parkoviská: 14.*Bloky: 126\\/126/);
+    await waitFor(spectator, /Aktívne parkoviská: 14.*Bloky: 126\/126/);
 
     for (let i = 2; i < PLAYER_COUNT; i++) {
       const name = 'IceRushP' + String(i).padStart(2, '0');
