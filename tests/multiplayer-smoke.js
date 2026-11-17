@@ -114,6 +114,17 @@ async function main() {
     admin.chat(`/tp @e[type=minecraft:boat,sort=nearest,limit=1] ${parking.x} ${parking.y} ${parking.z}`);
     await waitFor(admin, /IceRushGuest vypadáva z kola!/);
     await waitFor(admin, /IceRushAdmin VYHRÁVA ICE RUSH!/);
+    await new Promise(resolve => setTimeout(resolve, 400));
+    let leftoverParkingBlocks = 0;
+    for (let x = center.x - 8; x <= center.x + 8; x++) {
+      for (let z = center.z - 8; z <= center.z + 8; z++) {
+        const block = admin.blockAt(new Vec3(x, center.y - 1, z));
+        if (block && block.name === 'light_blue_concrete') leftoverParkingBlocks++;
+      }
+    }
+    if (leftoverParkingBlocks !== 0) {
+      throw new Error('Parking pads were not removed after parking ended; leftover blocks=' + leftoverParkingBlocks);
+    }
 
     await new Promise(resolve => setTimeout(resolve, 1800));
     admin.chat('/icerush stats');
