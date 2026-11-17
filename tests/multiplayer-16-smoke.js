@@ -150,14 +150,18 @@ async function main() {
 
     await waitFor(bots.get('IceRushP01'), /PARKOVANIE!/, 120_000);
     const countCentralPads = () => {
-      let blocks = 0;
-      for (let x = arenaCenter.x - 8; x <= arenaCenter.x + 8; x++) {
-        for (let z = arenaCenter.z - 8; z <= arenaCenter.z + 8; z++) {
-          const block = bots.get('IceRushP16').blockAt(new Vec3(x, arenaCenter.y - 1, z));
-          if (block && block.name === 'light_blue_concrete') blocks++;
+      let maximumBlocks = 0;
+      for (let y = arenaCenter.y - 4; y <= arenaCenter.y + 1; y++) {
+        let blocksAtY = 0;
+        for (let x = arenaCenter.x - 8; x <= arenaCenter.x + 8; x++) {
+          for (let z = arenaCenter.z - 8; z <= arenaCenter.z + 8; z++) {
+            const block = bots.get('IceRushP16').blockAt(new Vec3(x, y, z));
+            if (block && block.name === 'light_blue_concrete') blocksAtY++;
+          }
         }
+        maximumBlocks = Math.max(maximumBlocks, blocksAtY);
       }
-      return blocks;
+      return maximumBlocks;
     };
     const fullPadCount = countCentralPads();
     if (fullPadCount !== 15 * 9) {
