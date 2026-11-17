@@ -248,12 +248,20 @@ public final class IceRushGame {
             source.sendError(Text.literal("Parkovacie miesta pridávaj priamo v nastavenej aréne."));
             return 0;
         }
+        double dx = player.getX() - arenaCenter.getX();
+        double dz = player.getZ() - arenaCenter.getZ();
+        double radius = Math.sqrt(dx * dx + dz * dz);
+        if (radius < arenaInnerRadius() - 2.0 || radius > arenaOuterRadius() + 2.0) {
+            source.sendError(Text.literal("Postav sa na ľadový okruh (nie do lobby) a až potom použi /icerush addspot."));
+            return 0;
+        }
         if (!config.parkingSpotsCustomized) {
             config.customParkingSpots.clear();
             for (Vec3d existing : parkingSpots) config.customParkingSpots.add(new double[]{existing.x, existing.y, existing.z});
             config.parkingSpotsCustomized = true;
         }
-        Vec3d newSpot = new Vec3d(player.getX(), player.getY(), player.getZ());
+        // Výška parkoviska je vždy úroveň trate, nie výška hráča v lobby.
+        Vec3d newSpot = new Vec3d(player.getX(), arenaCenter.getY(), player.getZ());
         parkingSpots.add(newSpot);
         config.customParkingSpots.add(new double[]{newSpot.x, newSpot.y, newSpot.z});
         config.save();
@@ -377,10 +385,28 @@ public final class IceRushGame {
             if (!config.parkingSpotsCustomized) parkingSpots.add(position);
         }
         if (config.parkingSpotsCustomized) {
+            boolean invalidSavedSpot = false;
             for (double[] coordinates : config.customParkingSpots) {
-                if (coordinates != null && coordinates.length >= 3) {
-                    parkingSpots.add(new Vec3d(coordinates[0], coordinates[1], coordinates[2]));
+                if (coordinates == null || coordinates.length < 3) {
+                    invalidSavedSpot = true;
+                    break;
                 }
+                double dx = coordinates[0] - cx;
+                double dz = coordinates[2] - cz;
+                double radius = Math.sqrt(dx * dx + dz * dz);
+                if (radius < arenaInnerRadius() - 2.0 || radius > arenaOuterRadius() + 2.0) {
+                    invalidSavedSpot = true;
+                    break;
+                }
+                parkingSpots.add(new Vec3d(coordinates[0], cy + 1.0, coordinates[2]));
+            }
+            if (invalidSavedSpot) {
+                IceRushMod.LOGGER.warn("Invalid saved ICE RUSH parking positions detected; restoring default ring positions");
+                config.parkingSpotsCustomized = false;
+                config.customParkingSpots.clear();
+                config.save();
+                parkingSpots.clear();
+                parkingSpots.addAll(startPositions);
             }
         }
     }
@@ -942,6 +968,7 @@ public final class IceRushGame {
                 for (int dz = -1; dz <= 1; dz++) {
                     BlockPos pos = center.add(dx, 0, dz);
                     parkingOriginalStates.putIfAbsent(pos, arenaWorld.getBlockState(pos));
+                    arenaWorld.setBlockState(pos, Blocks.LIGHT_BLUE_CONCRETE.getDefaultState());
                     parkingAnimationBlocks.add(pos);
                 }
             }
