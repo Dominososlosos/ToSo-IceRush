@@ -242,35 +242,9 @@ public final class IceRushGame {
         return 1;
     }
 
-    private int addSpot(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
-        if (state != State.WAITING) {
-            source.sendError(Text.literal("Parkovacie miesta možno nastavovať iba v lobby."));
-            return 0;
-        }
-        ServerPlayerEntity player = source.getPlayerOrThrow();
-        if (arenaWorld == null || player.getServerWorld() != arenaWorld) {
-            source.sendError(Text.literal("Parkovacie miesta pridávaj priamo v nastavenej aréne."));
-            return 0;
-        }
-        double dx = player.getX() - arenaCenter.getX();
-        double dz = player.getZ() - arenaCenter.getZ();
-        double radius = Math.sqrt(dx * dx + dz * dz);
-        if (radius < arenaInnerRadius() - 2.0 || radius > arenaOuterRadius() + 2.0) {
-            source.sendError(Text.literal("Postav sa na ľadový okruh (nie do lobby) a až potom použi /icerush addspot."));
-            return 0;
-        }
-        if (!config.parkingSpotsCustomized) {
-            config.customParkingSpots.clear();
-            for (Vec3d existing : parkingSpots) config.customParkingSpots.add(new double[]{existing.x, existing.y, existing.z});
-            config.parkingSpotsCustomized = true;
-        }
-        // Výška parkoviska je vždy úroveň trate, nie výška hráča v lobby.
-        Vec3d newSpot = new Vec3d(player.getX(), arenaCenter.getY(), player.getZ());
-        parkingSpots.add(newSpot);
-        config.customParkingSpots.add(new double[]{newSpot.x, newSpot.y, newSpot.z});
-        config.save();
-        source.sendFeedback(() -> Text.literal("Parkovacie miesto #" + parkingSpots.size() + " uložené na tvojej pozícii."), false);
-        return 1;
+    private int addSpot(ServerCommandSource source) {
+        source.sendError(Text.literal("Parkoviská sa generujú automaticky v strede arény: vždy presne počet aktívnych hráčov mínus jedno. Ručné pridávanie nie je povolené."));
+        return 0;
     }
 
     private int setupArena(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
@@ -615,11 +589,11 @@ public final class IceRushGame {
             source.sendError(Text.literal("Parkovacie miesta možno meniť iba v lobby."));
             return 0;
         }
-        parkingSpots.clear();
-        config.parkingSpotsCustomized = true;
+        config.parkingSpotsCustomized = false;
         config.customParkingSpots.clear();
         config.save();
-        source.sendFeedback(() -> Text.literal("Všetky parkovacie miesta boli odstránené. Pridaj vlastné cez /icerush addspot alebo obnov predvolené cez /icerush defaultspots."), false);
+        initializeArenaPositions();
+        source.sendFeedback(() -> Text.literal("Obnovené centrálne parkoviská: " + parkingSpots.size() + " miest. Počet sa bude vždy riadiť aktívnymi hráčmi mínus jedno."), false);
         return 1;
     }
 
