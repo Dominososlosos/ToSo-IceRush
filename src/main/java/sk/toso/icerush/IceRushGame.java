@@ -615,20 +615,25 @@ public final class IceRushGame {
     private int showAchievements(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayerEntity player = source.getPlayerOrThrow();
         IceRushStatsStore.PlayerStats stats = statsStore.get(player.getUuid());
-        player.sendMessage(Text.literal("ICE RUSH — ACHIEVEMENTY").formatted(Formatting.GOLD, Formatting.BOLD), false);
+        player.sendMessage(Text.literal("━━━━━━━━━━ TOSO • ICE RUSH ━━━━━━━━━━").formatted(Formatting.AQUA, Formatting.BOLD), false);
+        player.sendMessage(Text.literal("             ÚSPECHY A ACHIEVEMENTY").formatted(Formatting.GOLD, Formatting.BOLD), false);
         String[][] goals = {
-            {"Prvá výhra", "1 výhra", stats.wins >= 1 ? "1" : "0"},
-            {"Ice King", "10 výhier", String.valueOf(stats.wins)},
-            {"Turbo Master", "25 turbo bonusov", String.valueOf(stats.turboBonuses)},
-            {"Speed Demon", "dosiahni referenčnú rýchlosť " + String.format(java.util.Locale.ROOT, "%.2f", config.speedReference), String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord)},
-            {"Survivor", "preži 10 kôl", String.valueOf(stats.roundsSurvived)},
-            {"Perfect Parking", "zaparkuj za najviac 5 sekúnd", stats.bestParkingTicks == 0 ? "—" : (stats.bestParkingTicks / 20.0) + " s"}
+            {"Prvá výhra", "Získaj svoju prvú výhru", stats.wins >= 1 ? "1/1" : "0/1"},
+            {"Ice King", "Vyhraj 10 hier", stats.wins + "/10 výhier"},
+            {"Turbo Master", "Získaj 25 turbo bonusov", stats.turboBonuses + "/25 bonusov"},
+            {"Speed Demon", "Dosiahni referenčnú rýchlosť " + String.format(java.util.Locale.ROOT, "%.2f", config.speedReference), String.format(java.util.Locale.ROOT, "%.3f", stats.speedRecord)},
+            {"Survivor", "Preži 10 kôl", stats.roundsSurvived + "/10 kôl"},
+            {"Perfect Parking", "Zaparkuj za najviac 5 sekúnd", stats.bestParkingTicks == 0 ? "Bez záznamu" : String.format(java.util.Locale.ROOT, "%.2f s", stats.bestParkingTicks / 20.0)}
         };
         for (String[] goal : goals) {
             boolean unlocked = stats.achievements.contains(goal[0]);
-            player.sendMessage(Text.literal((unlocked ? "§a✓ " : "§7○ ") + goal[0] + " — " + goal[1]
-                + (unlocked ? " [ODOMKNUTÉ]" : " [ZAMKNUTÉ]")), false);
+            Text line = Text.literal(unlocked ? "✓ " : "○ ").formatted(unlocked ? Formatting.GREEN : Formatting.DARK_GRAY)
+                .append(Text.literal(goal[0]).formatted(Formatting.WHITE, Formatting.BOLD))
+                .append(Text.literal(" — " + goal[1] + " [" + goal[2] + "]")
+                    .formatted(unlocked ? Formatting.GREEN : Formatting.GRAY));
+            player.sendMessage(line, false);
         }
+        player.sendMessage(Text.literal("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━").formatted(Formatting.AQUA), false);
         return 1;
     }
 
