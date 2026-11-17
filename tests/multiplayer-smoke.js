@@ -67,6 +67,13 @@ async function main() {
 
     admin.chat('/icerush setup');
     await waitFor(admin, /ICE RUSH aréna vytvorená/);
+    // The admin is now at the lobby, exactly 80 blocks above the arena centre.
+    center.x = Math.floor(admin.entity.position.x);
+    center.z = Math.floor(admin.entity.position.z);
+    center.y = Math.floor(admin.entity.position.y) - 80;
+    parking.x = center.x - 1.5;
+    parking.y = center.y;
+    parking.z = center.z - 1.5;
 
     // Join by clicking the first player-shaped lobby character, not by command.
     await new Promise(resolve => setTimeout(resolve, 500));
