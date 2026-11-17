@@ -84,6 +84,9 @@ async function main() {
       && npcXOffsets.some(offset => Math.abs(entity.position.x - (center.x + offset)) < 0.8));
     if (lobbyCharacters.length !== 6) throw new Error('Expected six lobby characters, found ' + lobbyCharacters.length);
     const joinStand = lobbyCharacters.sort((a, b) => a.position.x - b.position.x)[0];
+    // The NPCs are deliberately spread along the lobby edge; walk within interaction reach.
+    admin.chat(`/tp @s ${joinStand.position.x + 1.5} ${center.y + 80} ${joinStand.position.z - 1.5}`);
+    await new Promise(resolve => setTimeout(resolve, 350));
     admin.activateEntity(joinStand);
     await waitFor(admin, /IceRushAdmin sa pripojil do ICE RUSH/);
     // Use the generated central pad; the test must not replace it with a ring position.
