@@ -52,8 +52,8 @@ jobs:
           unzip -p "$MOD_JAR" fabric.mod.json | grep -q '"minecraft": "1.20.1"'
           unzip -p "$MOD_JAR" fabric.mod.json | grep -q '"fabricloader": ">=0.19.1"'
           cp "$MOD_JAR" server/mods/
-          curl -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.92.7%2B1.20.1/fabric-api-0.92.7%2B1.20.1.jar" -o server/mods/fabric-api.jar
-          curl -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.1/fabric-installer-1.0.1.jar" -o fabric-installer.jar
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.92.7%2B1.20.1/fabric-api-0.92.7%2B1.20.1.jar" -o server/mods/fabric-api.jar
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.1/fabric-installer-1.0.1.jar" -o fabric-installer.jar
           cd server
           java -jar ../fabric-installer.jar server -mcversion 1.20.1 -loader "${{ matrix.loader_version }}" -downloadMinecraft
           printf 'eula=true\n' > eula.txt
@@ -98,8 +98,8 @@ jobs:
           MOD_JAR="$(find build/libs -maxdepth 1 -type f -name 'icerush-*.jar' ! -name '*-sources.jar' | head -n 1)"
           test -n "$MOD_JAR"
           cp "$MOD_JAR" server/mods/
-          curl -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.92.7%2B1.20.1/fabric-api-0.92.7%2B1.20.1.jar" -o server/mods/fabric-api.jar
-          curl -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.1/fabric-installer-1.0.1.jar" -o fabric-installer.jar
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.92.7%2B1.20.1/fabric-api-0.92.7%2B1.20.1.jar" -o server/mods/fabric-api.jar
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.1/fabric-installer-1.0.1.jar" -o fabric-installer.jar
           cd server
           java -jar ../fabric-installer.jar server -mcversion 1.20.1 -loader 0.19.1 -downloadMinecraft
           printf 'eula=true\n' > eula.txt
@@ -186,8 +186,8 @@ jobs:
           MOD_JAR="$(find build/libs -maxdepth 1 -type f -name 'icerush-*.jar' ! -name '*-sources.jar' | head -n 1)"
           test -n "$MOD_JAR"
           cp "$MOD_JAR" server/mods/
-          curl -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.92.7%2B1.20.1/fabric-api-0.92.7%2B1.20.1.jar" -o server/mods/fabric-api.jar
-          curl -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.1/fabric-installer-1.0.1.jar" -o fabric-installer.jar
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.92.7%2B1.20.1/fabric-api-0.92.7%2B1.20.1.jar" -o server/mods/fabric-api.jar
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.1/fabric-installer-1.0.1.jar" -o fabric-installer.jar
           cd server
           java -jar ../fabric-installer.jar server -mcversion 1.20.1 -loader 0.19.1 -downloadMinecraft
           printf 'eula=true\n' > eula.txt
