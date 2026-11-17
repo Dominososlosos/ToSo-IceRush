@@ -1083,16 +1083,18 @@ public final class IceRushGame {
         String playerLabel = state == State.WAITING ? participants.size() + "/" + config.maxPlayers : activeCount() + " aktívnych";
         String readyLabel = state == State.WAITING ? readyCount + "/" + participants.size() : "—";
         String[] lines = {
-            "§b§lTOSO §f• §bICE RUSH",
-            "§7Stav: §f" + phase,
-            "§7Hráči: §f" + playerLabel,
-            "§7READY: §f" + readyLabel,
-            "§7Kolo: §f" + round + " §8| §7Čas: §f" + timeLabel,
-            "§7Parkoviská: §f" + parkingSpots.size()
+            "TOSO • ICE RUSH",
+            "Stav: " + phase,
+            "Hráči: " + playerLabel,
+            "READY: " + readyLabel,
+            "Kolo: " + round + " | Čas: " + timeLabel,
+            "Parkoviská: " + parkingSpots.size()
         };
 
         // Invisible unique holders keep the sidebar safe for accents, spaces and formatting.
-        String[] holders = {"\\u200B", "\\u200C", "\\u200D", "\\u2060", "\\u2061", "\\u2062"};
+        String[] holders = {String.valueOf((char) 0x200B), String.valueOf((char) 0x200C),
+            String.valueOf((char) 0x200D), String.valueOf((char) 0x2060),
+            String.valueOf((char) 0x2061), String.valueOf((char) 0x2062)};
         for (int i = 0; i < lines.length; i++) {
             String teamName = "icerush_line_" + (i + 1);
             var team = scoreboard.getTeam(teamName);
