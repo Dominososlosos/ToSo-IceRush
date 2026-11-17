@@ -100,7 +100,9 @@ async function main() {
         await waitFor(bot, /ICE RUSH aréna vytvorená/);
         await new Promise(resolve => setTimeout(resolve, 500));
         const characters = Object.values(bot.entities).filter(entity =>
-          entity.name === 'armor_stand' && Math.abs(entity.position.y - bot.entity.position.y) < 10);
+          entity.name === 'armor_stand'
+          && Math.abs(entity.position.y - bot.entity.position.y) < 10
+          && Math.abs(entity.position.z - (arenaCenter.z + 6.9)) < 1.0);
         if (characters.length !== 6) throw new Error('Expected six non-villager lobby characters, found ' + characters.length);
         const villagers = Object.values(bot.entities).filter(entity =>
           entity.name === 'villager' && Math.abs(entity.position.y - bot.entity.position.y) < 10);
