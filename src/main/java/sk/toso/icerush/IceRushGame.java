@@ -1112,7 +1112,18 @@ public final class IceRushGame {
                 scoreboard.addPlayerToTeam(holder, team);
             }
 
-            team.setPrefix(Text.literal(lines[i]));
+            Formatting lineColor = switch (i) {
+                case 0 -> Formatting.AQUA;
+                case 1 -> Formatting.YELLOW;
+                case 2 -> Formatting.WHITE;
+                case 3 -> Formatting.GREEN;
+                case 4 -> Formatting.GOLD;
+                default -> Formatting.BLUE;
+            };
+            var prefix = Text.literal(lines[i]).formatted(lineColor);
+            if (i == 0) prefix.formatted(Formatting.BOLD);
+            team.setColor(lineColor);
+            team.setPrefix(prefix);
             team.setSuffix(Text.empty());
             scoreboard.getPlayerScore(holder, objective).setScore(lines.length - i);
         }
