@@ -9,7 +9,10 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.entity.decoration.InteractionEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.entity.passive.VillagerEntity;
+import net.minecraft.entity.mob.ZombieEntity;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -385,33 +388,18 @@ public final class IceRushGame {
             double angle = (Math.PI * 2.0 * i) / config.maxPlayers;
             Vec3d position = new Vec3d(cx + Math.cos(angle) * trackRadius + 0.5, cy + 1.0, cz + Math.sin(angle) * trackRadius + 0.5);
             startPositions.add(position);
-            if (!config.parkingSpotsCustomized) parkingSpots.add(position);
         }
-        if (config.parkingSpotsCustomized) {
-            boolean invalidSavedSpot = false;
-            for (double[] coordinates : config.customParkingSpots) {
-                if (coordinates == null || coordinates.length < 3) {
-                    invalidSavedSpot = true;
-                    break;
-                }
-                double dx = coordinates[0] - cx;
-                double dz = coordinates[2] - cz;
-                double radius = Math.sqrt(dx * dx + dz * dz);
-                if (radius < arenaInnerRadius() - 2.0 || radius > arenaOuterRadius() + 2.0) {
-                    invalidSavedSpot = true;
-                    break;
-                }
-                parkingSpots.add(new Vec3d(coordinates[0], cy + 1.0, coordinates[2]));
-            }
-            if (invalidSavedSpot) {
-                IceRushMod.LOGGER.warn("Invalid saved ICE RUSH parking positions detected; restoring default ring positions");
-                config.parkingSpotsCustomized = false;
-                config.customParkingSpots.clear();
-                config.save();
-                parkingSpots.clear();
-                parkingSpots.addAll(startPositions);
+        // Central 4x4 grid: every parking space is a 3x3 platform with a one-block gap.
+        List<Vec3d> centralGrid = new ArrayList<>();
+        for (int gx : new int[]{-6, -2, 2, 6}) {
+            for (int gz : new int[]{-6, -2, 2, 6}) {
+                centralGrid.add(new Vec3d(cx + gx + 0.5, cy + 1.0, cz + gz + 0.5));
             }
         }
+        centralGrid.sort((a, b) -> Double.compare(
+            Math.pow(a.x - (cx + 0.5), 2) + Math.pow(a.z - (cz + 0.5), 2),
+            Math.pow(b.x - (cx + 0.5), 2) + Math.pow(b.z - (cz + 0.5), 2)));
+        parkingSpots.addAll(centralGrid.subList(0, Math.min(centralGrid.size(), Math.max(0, config.maxPlayers - 1))));
     }
 
     private int repairArena(ServerCommandSource source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
@@ -502,21 +490,27 @@ public final class IceRushGame {
         for (int i = 0; i < actions.length; i++) {
             String tag = "icerush_button_" + actions[i];
             final String actionTag = tag;
-            List<VillagerEntity> existing = arenaWorld.getEntitiesByClass(VillagerEntity.class, searchBox,
-                villager -> villager.getCommandTags().contains(actionTag));
+            List<ZombieEntity> existing = arenaWorld.getEntitiesByClass(ZombieEntity.class, searchBox,
+                zombie -> zombie.getCommandTags().contains(actionTag));
             if (!existing.isEmpty()) continue;
 
-            int column = i % 3;
-            int row = i / 3;
-            double x = arenaCenter.getX() - 4.0 + column * 4.0;
-            double z = arenaCenter.getZ() + 1.0 + row * 3.0;
-            VillagerEntity npc = EntityType.VILLAGER.create(arenaWorld);
+            // Clickable character models are placed along the front edge of the lobby.
+            double x = arenaCenter.getX() - 7.0 + i * 2.8;
+            double z = arenaCenter.getZ() + 6.4;
+            ZombieEntity npc = EntityType.ZOMBIE.create(arenaWorld);
             if (npc == null) continue;
             npc.refreshPositionAndAngles(x + 0.5, lobbyY + 1.0, z + 0.5, 180.0F, 0.0F);
             npc.setAiDisabled(true);
             npc.setInvulnerable(true);
             npc.setSilent(true);
             npc.setNoGravity(true);
+            npc.setCanPickUpLoot(false);
+            ItemStack playerHead = new ItemStack(Items.PLAYER_HEAD);
+            playerHead.getOrCreateNbt().putString("SkullOwner", "MHF_Steve");
+            npc.equipStack(EquipmentSlot.HEAD, playerHead);
+            npc.equipStack(EquipmentSlot.CHEST, new ItemStack(Items.DIAMOND_CHESTPLATE));
+            npc.equipStack(EquipmentSlot.LEGS, new ItemStack(Items.IRON_LEGGINGS));
+            npc.equipStack(EquipmentSlot.FEET, new ItemStack(Items.DIAMOND_BOOTS));
             npc.setCustomName(Text.literal(labels[i]).formatted(colors[i], Formatting.BOLD));
             npc.setCustomNameVisible(true);
             npc.addCommandTag(tag);
@@ -995,7 +989,6 @@ public final class IceRushGame {
                     BlockPos pos = center.add(dx, 0, dz);
                     parkingOriginalStates.putIfAbsent(pos, arenaWorld.getBlockState(pos));
                     arenaWorld.setBlockState(pos, Blocks.LIGHT_BLUE_CONCRETE.getDefaultState());
-                    parkingAnimationBlocks.add(pos);
                 }
             }
         }
@@ -1013,22 +1006,7 @@ public final class IceRushGame {
     }
 
     private void tickParkingVisuals(MinecraftServer server) {
-        if (arenaWorld == null) return;
-        // Miesta sa postupne vyskladajú namiesto okamžitého objavenia celej plochy.
-        BlockPos lastPlaced = null;
-        for (int placed = 0; placed < 8 && parkingAnimationIndex < parkingAnimationBlocks.size(); placed++) {
-            BlockPos pos = parkingAnimationBlocks.get(parkingAnimationIndex++);
-            arenaWorld.setBlockState(pos, Blocks.LIGHT_BLUE_CONCRETE.getDefaultState());
-            arenaWorld.spawnParticles(ParticleTypes.SNOWFLAKE, pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5, 5, 0.25, 0.1, 0.25, 0.01);
-            lastPlaced = pos;
-        }
-        if (lastPlaced != null && server.getTicks() % 5 == 0) {
-            arenaWorld.playSound(null, lastPlaced, SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.BLOCKS, 0.35F, 1.6F);
-        }
-        if (server.getTicks() % 10 != 0) return;
-        for (BlockPos pos : parkingOriginalStates.keySet()) {
-            arenaWorld.spawnParticles(ParticleTypes.SNOWFLAKE, pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5, 2, 0.25, 0.1, 0.25, 0.005);
-        }
+        // The 3x3 parking pads are solid blocks; no particle cloud obscures them.
     }
 
     private void updateParking(MinecraftServer server) {
@@ -1048,9 +1026,10 @@ public final class IceRushGame {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player == null) continue;
+            BoatEntity assignedBoat = playerBoats.get(participant.id);
             Entity vehicle = player.getVehicle();
-            if (!(vehicle instanceof BoatEntity)) continue;
-            Vec3d boatPosition = vehicle.getPos();
+            if (assignedBoat == null || vehicle != assignedBoat || !assignedBoat.hasPassenger(player)) continue;
+            Vec3d boatPosition = assignedBoat.getPos();
             for (int i = 0; i < Math.min(parkingSpots.size(), Math.max(0, activeCount() - 1)); i++) {
                 if (occupiedSpots.contains(i)) continue;
                 if (boatPosition.squaredDistanceTo(parkingSpots.get(i)) <= config.parkingRadius * config.parkingRadius) {
@@ -1349,7 +1328,8 @@ public final class IceRushGame {
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
-            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
+            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)
+                || boat != playerBoats.get(participant.id) || !boat.hasPassenger(player)) continue;
             Vec3d currentVelocity = boat.getVelocity();
             double previousScale = Math.max(0.60, Math.min(1.0, participant.appliedSpeedScale));
             Vec3d unscaledVelocity = new Vec3d(currentVelocity.x / previousScale, currentVelocity.y, currentVelocity.z / previousScale);
@@ -1498,7 +1478,8 @@ public final class IceRushGame {
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
-            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
+            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)
+                || boat != playerBoats.get(participant.id) || !boat.hasPassenger(player)) continue;
             for (int i = 0; i < turboZones.size(); i++) {
                 if (boat.getPos().squaredDistanceTo(turboZones.get(i)) > 9.0) {
                     participant.turboZonesUsed.remove(i);
@@ -1527,7 +1508,8 @@ public final class IceRushGame {
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
-            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)) continue;
+            if (player == null || !(player.getVehicle() instanceof BoatEntity boat)
+                || boat != playerBoats.get(participant.id) || !boat.hasPassenger(player)) continue;
             if (roundEvent.equals("SNOW") && server.getTicks() % 10 == 0) {
                 arenaWorld.spawnParticles(ParticleTypes.SNOWFLAKE, boat.getX(), boat.getY() + 1.0, boat.getZ(), 8, 0.7, 0.3, 0.7, 0.01);
             } else if (roundEvent.equals("WIND")) {
@@ -1661,15 +1643,18 @@ public final class IceRushGame {
                 player.teleport(arenaWorld, safePosition.x, safePosition.y + 0.35, safePosition.z,
                     player.getYaw(), 0.0F);
             }
-            if (player.getVehicle() != boat) {
-                // Keep racers safely mounted if they press Shift over the open center.
-                player.stopRiding();
-                player.teleport(arenaWorld, boat.getX(), boat.getY() + 0.35, boat.getZ(),
-                    boat.getYaw(), 0.0F);
-                if (!player.startRiding(boat, true)) {
-                    player.teleport(arenaWorld, boat.getX(), boat.getY() + 0.8, boat.getZ(),
+            boolean correctlySeated = player.getVehicle() == boat && boat.hasPassenger(player);
+            if (!correctlySeated) {
+                if (player.hasVehicle()) player.stopRiding();
+                boolean mounted = player.startRiding(boat, true);
+                if (!mounted) {
+                    player.teleport(arenaWorld, boat.getX(), boat.getY() + 0.35, boat.getZ(),
                         boat.getYaw(), 0.0F);
-                    player.startRiding(boat, true);
+                    mounted = player.startRiding(boat, true);
+                }
+                if (!mounted || player.getVehicle() != boat || !boat.hasPassenger(player)) {
+                    IceRushMod.LOGGER.warn("Could not seat ICE RUSH player {} in assigned boat {}",
+                        player.getGameProfile().getName(), boat.getUuid());
                 }
             }
         }
