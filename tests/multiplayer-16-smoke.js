@@ -119,6 +119,16 @@ async function main() {
     }
     await waitFor(bots.get('IceRushP01'), /ICE RUSH sa začína!/);
     await waitFor(bots.get('IceRushP01'), /ŠTART! Kolo 1 — jazda!/);
+    await new Promise(resolve => setTimeout(resolve, 700));
+    for (let i = 1; i <= PLAYER_COUNT; i++) {
+      const name = 'IceRushP' + String(i).padStart(2, '0');
+      const bot = bots.get(name);
+      if (!bot.vehicle) throw new Error(name + ' was not actually mounted in a boat at race start');
+      const dx = bot.vehicle.position.x - arenaCenter.x;
+      const dz = bot.vehicle.position.z - arenaCenter.z;
+      const radius = Math.sqrt(dx * dx + dz * dz);
+      if (radius < 36 || radius > 47) throw new Error(name + ' boat was not on the track ring; radial distance=' + radius.toFixed(2));
+    }
 
     spectator = connect('IceRushLate');
     await spawned(spectator, 'Late spectator');
