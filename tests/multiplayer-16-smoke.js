@@ -25,7 +25,7 @@ function connect(username) {
 function isConnected(bot) {
   const client = bot && bot._client;
   return Boolean(bot && bot.entity && client && !client.ended
-    && client.socket && !client.socket.destroyed);
+    && client.socket && client.socket.writable && !client.socket.destroyed);
 }
 
 function waitForNewMessage(bot, pattern, timeout = TIMEOUT) {
