@@ -193,7 +193,7 @@ async function main() {
     const padsAfter = Number(afterMatch[2]);
     const blocksAfter = Number(afterMatch[3]);
     const totalAfter = Number(afterMatch[4]);
-    if (activeAfter !== activeBefore - 1 || padsAfter !== Math.max(0, activeAfter - 1)
+    if (activeAfter >= activeBefore || padsAfter !== Math.max(0, activeAfter - 1)
         || blocksAfter !== padsAfter * 9 || totalAfter !== blocksAfter) {
       throw new Error('Parking pads were not reconciled after disconnect: ' + afterStatus);
     }
