@@ -775,6 +775,20 @@ public final class IceRushGame {
             }
             lateSpectators.remove(playerId);
         }
+
+        // Reconcile the parking phase immediately after a competitor leaves.
+        // If the remaining occupied pads already satisfy the reduced player
+        // count, resolve the phase now instead of hiding a pad under a parked
+        // player on the next tick.
+        if (state == State.PARKING) {
+            int requiredPads = Math.max(0, activeCount() - 1);
+            if (occupiedSpots.size() >= requiredPads) {
+                finishParking(server);
+            } else {
+                visibleParkingPadCount = -1;
+            }
+        }
+
         // A disconnect during a live round must resolve the match immediately
         // when one or fewer active competitors remain.
         if (state != State.WAITING && state != State.FINISHED
