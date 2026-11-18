@@ -1683,20 +1683,17 @@ public final class IceRushGame {
         for (UUID id : participants.keySet()) {
             ServerPlayerEntity competitor = server.getPlayerManager().getPlayer(id);
             if (competitor != null) {
-                // Detach from both sides of the vehicle relationship before
-                // teleporting or removing the boat; this also flushes the
-                // passenger update to tracking clients.
-                competitor.stopRiding();
-                competitor.changeGameMode(GameMode.ADVENTURE);
-                teleportToLobby(competitor);
+                // Use the same ordered lobby-return path as /icerush leave:
+                // dismount, teleport, switch to Adventure, then show the menu.
+                // Changing mode after teleport also avoids the final position
+                // transition racing the game-mode update on tracking clients.
+                returnToLobby(competitor);
             }
         }
         for (UUID id : lateSpectators) {
             ServerPlayerEntity spectator = server.getPlayerManager().getPlayer(id);
             if (spectator != null) {
-                spectator.stopRiding();
-                spectator.changeGameMode(GameMode.ADVENTURE);
-                teleportToLobby(spectator);
+                returnToLobby(spectator);
             }
         }
         for (BoatEntity boat : playerBoats.values()) {
