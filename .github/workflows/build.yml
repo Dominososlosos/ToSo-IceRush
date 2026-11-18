@@ -1,0 +1,251 @@
+name: Build Fabric mod
+
+on:
+  push:
+    branches: [ main, compat/minecraft-1.20.1, compat/fabric-loader-0.19.x, test/16-player-spectator-disconnect ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.12'
+      - name: Build
+        run: gradle build
+      - name: Upload mod JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: ICE-RUSH-Fabric-1.20.1
+          path: build/libs/*.jar
+
+  server-smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        loader_version: ['0.19.1', '0.19.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ICE-RUSH-Fabric-1.20.1
+          path: build/libs
+      - name: Prepare Fabric 1.20.1 test server
+        run: |
+          mkdir -p server/mods
+          MOD_JAR="$(find build/libs -maxdepth 1 -type f -name 'icerush-*.jar' ! -name '*-sources.jar' | head -n 1)"
+          test -n "$MOD_JAR"
+          unzip -p "$MOD_JAR" fabric.mod.json | grep -q '"environment": "server"'
+          unzip -p "$MOD_JAR" fabric.mod.json | grep -q '"minecraft": "1.20.1"'
+          unzip -p "$MOD_JAR" fabric.mod.json | grep -q '"fabricloader": ">=0.19.1"'
+          cp "$MOD_JAR" server/mods/
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.92.7%2B1.20.1/fabric-api-0.92.7%2B1.20.1.jar" -o server/mods/fabric-api.jar
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.1/fabric-installer-1.0.1.jar" -o fabric-installer.jar
+          cd server
+          java -jar ../fabric-installer.jar server -mcversion 1.20.1 -loader "${{ matrix.loader_version }}" -downloadMinecraft
+          printf 'eula=true\n' > eula.txt
+          printf 'online-mode=false\n' > server.properties
+      - name: Boot dedicated server and verify mod commands
+        run: |
+          cd server
+          set +e
+          printf 'icerush status\nstop\n' | timeout 120s java -Xms1G -Xmx1G -jar fabric-server-launch.jar nogui
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "Fabric Loader ${{ matrix.loader_version }} smoke test exited with status $status"
+            cat logs/latest.log || true
+            exit "$status"
+          fi
+          grep -q "ICE RUSH initialized" logs/latest.log
+          grep -q "Stav: WAITING" logs/latest.log
+          if grep -q 'Expected whitespace to end one argument' logs/latest.log; then echo 'Scoreboard command parsing failed'; cat logs/latest.log; exit 1; fi
+          test -f config/icerush.json
+  multiplayer-integration-test:
+    needs: [build, server-smoke-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ICE-RUSH-Fabric-1.20.1
+          path: build/libs
+      - name: Install Minecraft protocol test clients
+        run: npm install --no-save mineflayer@4.20.1
+      - name: Prepare short two-player match
+        run: |
+          mkdir -p server/mods server/config server/logs
+          MOD_JAR="$(find build/libs -maxdepth 1 -type f -name 'icerush-*.jar' ! -name '*-sources.jar' | head -n 1)"
+          test -n "$MOD_JAR"
+          cp "$MOD_JAR" server/mods/
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.92.7%2B1.20.1/fabric-api-0.92.7%2B1.20.1.jar" -o server/mods/fabric-api.jar
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.1/fabric-installer-1.0.1.jar" -o fabric-installer.jar
+          cd server
+          java -jar ../fabric-installer.jar server -mcversion 1.20.1 -loader 0.19.1 -downloadMinecraft
+          printf 'eula=true\n' > eula.txt
+          cat > server.properties <<'EOF'
+          online-mode=false
+          server-port=25565
+          spawn-protection=0
+          view-distance=4
+          simulation-distance=4
+          max-players=5
+          EOF
+          cat > config/icerush.json <<'EOF'
+          {
+            "minPlayers": 2,
+            "maxPlayers": 2,
+            "countdownSeconds": 1,
+            "minRideSeconds": 5,
+            "maxRideSeconds": 5,
+            "parkingSeconds": 5,
+            "finishHoldSeconds": 1
+          }
+          EOF
+          node - <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const bytes = crypto.createHash('md5').update('OfflinePlayer:IceRushAdmin').digest();
+          bytes[6] = (bytes[6] & 0x0f) | 0x30;
+          bytes[8] = (bytes[8] & 0x3f) | 0x80;
+          const hex = bytes.toString('hex');
+          const uuid = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+          fs.writeFileSync('ops.json', JSON.stringify([{ uuid, name: 'IceRushAdmin', level: 4, bypassesPlayerLimit: false }], null, 2));
+          console.log(`Prepared offline operator ${uuid}`);
+          NODE
+      - name: Run complete two-client match through winner and stats
+        timeout-minutes: 6
+        run: |
+          cd server
+          mkfifo console
+          (java -Xms1G -Xmx2G -jar fabric-server-launch.jar nogui < console > logs/latest.log 2>&1) &
+          SERVER_PID=$!
+          exec 3<>console
+          cleanup() {
+            printf 'stop\n' >&3 || true
+            kill "$SERVER_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 60); do
+            if grep -q 'Done (' logs/latest.log; then break; fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then cat logs/latest.log; exit 1; fi
+            sleep 2
+          done
+          grep -q 'Done (' logs/latest.log
+          sleep 2
+          cd ..
+          node tests/multiplayer-smoke.js
+          grep -q 'ICE RUSH initialized' server/logs/latest.log
+          if grep -q 'Expected whitespace to end one argument' server/logs/latest.log; then echo 'Scoreboard command parsing failed'; cat server/logs/latest.log; exit 1; fi
+          test -f server/config/multiplayer-test-result.txt
+          grep -q 'IceRushAdmin' server/config/icerush-last-winner.txt
+          grep -q '"gamesPlayed": 1' server/config/icerush-stats.json
+          echo 'PASS: multiplayer match completed and winner/statistics were persisted.'
+
+  multiplayer-16-integration-test:
+    needs: [build, server-smoke-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ICE-RUSH-Fabric-1.20.1
+          path: build/libs
+      - name: Install Minecraft protocol test clients
+        run: npm install --no-save mineflayer@4.20.1
+      - name: Prepare 16-player test server
+        run: |
+          mkdir -p server/mods server/config server/logs
+          MOD_JAR="$(find build/libs -maxdepth 1 -type f -name 'icerush-*.jar' ! -name '*-sources.jar' | head -n 1)"
+          test -n "$MOD_JAR"
+          cp "$MOD_JAR" server/mods/
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.92.7%2B1.20.1/fabric-api-0.92.7%2B1.20.1.jar" -o server/mods/fabric-api.jar
+          curl --http1.1 --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.0.1/fabric-installer-1.0.1.jar" -o fabric-installer.jar
+          cd server
+          java -jar ../fabric-installer.jar server -mcversion 1.20.1 -loader 0.19.1 -downloadMinecraft
+          printf 'eula=true\n' > eula.txt
+          cat > server.properties <<'EOF'
+          online-mode=false
+          server-port=25565
+          spawn-protection=0
+          view-distance=4
+          simulation-distance=4
+          max-players=20
+          EOF
+          cat > config/icerush.json <<'EOF'
+          {
+            "minPlayers": 2,
+            "maxPlayers": 16,
+            "countdownSeconds": 1,
+            "minRideSeconds": 15,
+            "maxRideSeconds": 15,
+            "parkingSeconds": 60,
+            "finishHoldSeconds": 5
+          }
+          EOF
+          node - <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const name = 'IceRushP01';
+          const bytes = crypto.createHash('md5').update('OfflinePlayer:' + name).digest();
+          bytes[6] = (bytes[6] & 0x0f) | 0x30;
+          bytes[8] = (bytes[8] & 0x3f) | 0x80;
+          const hex = bytes.toString('hex');
+          const uuid = hex.slice(0,8) + '-' + hex.slice(8,12) + '-' + hex.slice(12,16) + '-' + hex.slice(16,20) + '-' + hex.slice(20);
+          fs.writeFileSync('ops.json', JSON.stringify([{ uuid, name, level: 4, bypassesPlayerLimit: false }], null, 2));
+          NODE
+      - name: Run 16-player, late-spectator and disconnect test
+        timeout-minutes: 12
+        run: |
+          cd server
+          mkfifo console
+          (java -Xms2G -Xmx4G -jar fabric-server-launch.jar nogui < console > logs/latest.log 2>&1) &
+          SERVER_PID=$!
+          exec 3<>console
+          cleanup() {
+            printf 'stop\n' >&3 || true
+            kill "$SERVER_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if grep -q 'Done (' logs/latest.log; then break; fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then cat logs/latest.log; exit 1; fi
+            sleep 2
+          done
+          grep -q 'Done (' logs/latest.log
+          sleep 2
+          cd ..
+          node tests/multiplayer-16-smoke.js
+          grep -q 'ICE RUSH initialized' server/logs/latest.log
+          if grep -q 'Expected whitespace to end one argument' server/logs/latest.log; then echo 'Scoreboard command parsing failed'; cat server/logs/latest.log; exit 1; fi
+          test -f server/config/multiplayer-16-test-result.txt
+          grep -q 'PASS: 16 competitors joined' server/config/multiplayer-16-test-result.txt
+          grep -q '"gamesPlayed": 1' server/config/icerush-stats.json
+          echo 'PASS: 16-player, late-spectator, disconnect and winner-persistence integration test.'
