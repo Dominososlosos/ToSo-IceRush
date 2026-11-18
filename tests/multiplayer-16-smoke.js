@@ -160,8 +160,8 @@ async function main() {
     // assuming all 16 sockets remain connected.
     bots.get('IceRushP16').chat('/icerush status');
     const initialStatus = await waitFor(bots.get('IceRushP16'),
-      /ICE RUSH \\| Stav: PARKING \\| Kolo: 1 \\| Hráči: \\d+\\/16 .*Aktívne parkoviská: \\d+ .*Bloky: \\d+\\/\\d+/);
-    const initialMatch = initialStatus.match(/Hráči: (\\d+)\\/16 .*Aktívne parkoviská: (\\d+) .*Bloky: (\\d+)\\/(\\d+)/);
+      /ICE RUSH \| Stav: PARKING \| Kolo: 1 \| Hráči: \d+\/16 .*Aktívne parkoviská: \d+ .*Bloky: \d+\/\d+/);
+    const initialMatch = initialStatus.match(/Hráči: (\d+)\/16 .*Aktívne parkoviská: (\d+) .*Bloky: (\d+)\/(\d+)/);
     if (!initialMatch) throw new Error('Could not parse authoritative parking status: ' + initialStatus);
     const activeBefore = Number(initialMatch[1]);
     const padsBefore = Number(initialMatch[2]);
@@ -174,12 +174,12 @@ async function main() {
     // Disconnecting one competitor during parking must immediately remove one pad.
     const firstName = 'IceRushP01';
     bots.get(firstName).quit();
-    await waitFor(spectator, new RegExp(firstName + ' opustil zápas a vypadáva\\.'));
+    await waitFor(spectator, new RegExp(firstName + ' opustil zápas a vypadáva\.'));
     await new Promise(resolve => setTimeout(resolve, 350));
     spectator.chat('/icerush status');
     const afterStatus = await waitFor(spectator,
-      /ICE RUSH \\| Stav: PARKING \\| Kolo: 1 \\| Hráči: \\d+\\/16 .*Aktívne parkoviská: \\d+ .*Bloky: \\d+\\/\\d+/);
-    const afterMatch = afterStatus.match(/Hráči: (\\d+)\\/16 .*Aktívne parkoviská: (\\d+) .*Bloky: (\\d+)\\/(\\d+)/);
+      /ICE RUSH \| Stav: PARKING \| Kolo: 1 \| Hráči: \d+\/16 .*Aktívne parkoviská: \d+ .*Bloky: \d+\/\d+/);
+    const afterMatch = afterStatus.match(/Hráči: (\d+)\/16 .*Aktívne parkoviská: (\d+) .*Bloky: (\d+)\/(\d+)/);
     if (!afterMatch) throw new Error('Could not parse parking status after disconnect: ' + afterStatus);
     const activeAfter = Number(afterMatch[1]);
     const padsAfter = Number(afterMatch[2]);
