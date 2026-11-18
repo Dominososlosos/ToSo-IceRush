@@ -194,7 +194,7 @@ async function main() {
     if (connected.length < 3) throw new Error('Too few connected competitors remain to verify parking disconnect and winner resolution');
     const [survivorName, survivor] = connected[connected.length - 1];
     const [disconnectName, disconnectBot] = connected[0];
-    disconnectBot.quit();
+    try { disconnectBot.quit(); } catch (_) {}
     try {
       await waitFor(spectator, new RegExp(disconnectName + ' opustil zápas a vypadáva\\.'), 5_000);
     } catch (error) {
@@ -225,7 +225,7 @@ async function main() {
       // been processed by the server; there is no reason to wait for an event
       // the spectator could not have received.
       if (isConnected(bot)) {
-        bot.quit();
+        try { bot.quit(); } catch (_) {}
         try {
           await waitFor(spectator, new RegExp(name + ' opustil zápas a vypadáva\\.'), 5_000);
         } catch (error) {
