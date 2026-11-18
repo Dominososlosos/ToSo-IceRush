@@ -175,6 +175,9 @@ async function main() {
 
     const survivor = bots.get('IceRushP16');
     await new Promise(resolve => setTimeout(resolve, 1200));
+    if (survivor.vehicle) {
+      throw new Error('Winner remained mounted in a boat after the match finished');
+    }
     survivor.chat('/icerush stats');
     await waitFor(survivor, /Výhry: 1.*Hry: 1/);
     await waitFor(survivor, /Úspešnosť: 100\.0%.*Prehry: 0/);

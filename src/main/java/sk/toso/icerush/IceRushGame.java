@@ -1336,10 +1336,10 @@ public final class IceRushGame {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player == null || !(player.getVehicle() instanceof BoatEntity boat)
                 || boat != playerBoats.get(participant.id) || !boat.hasPassenger(player)) continue;
-            Vec3d currentVelocity = boat.getVelocity();
-            double previousScale = Math.max(0.60, Math.min(1.0, participant.appliedSpeedScale));
-            Vec3d unscaledVelocity = new Vec3d(currentVelocity.x / previousScale, currentVelocity.y, currentVelocity.z / previousScale);
-            double speed = unscaledVelocity.horizontalLength();
+            // Meranie rýchlosti nesmie prepisovať fyziku vanilla lode.
+            // Opakované setVelocity() z HUD logiky môže prepisovať pohyb, ktorý
+            // práve vypočítal BoatEntity na základe vstupov hráča.
+            double speed = boat.getVelocity().horizontalLength();
             participant.speedRecord = Math.max(participant.speedRecord, speed);
             double normalizedSpeed = Math.max(0.0, Math.min(1.0, speed / config.speedReference));
             int availableSteps = (100 - config.minimumSpeedPercent) / 5;
@@ -1360,11 +1360,6 @@ public final class IceRushGame {
                 bar.setColor(BossBar.Color.RED);
                 bar.setName(Text.literal("RÝCHLOSŤ — " + participant.speedPercent + "%"));
             }
-            // Rýchlostný stupeň je zároveň fyzickým limitom: najprv obnovíme odhad
-            // rýchlosti pred predchádzajúcim limitom a potom aplikujeme nový násobiteľ.
-            double targetScale = participant.speedPercent / 100.0;
-            boat.setVelocity(new Vec3d(unscaledVelocity.x * targetScale, currentVelocity.y, unscaledVelocity.z * targetScale));
-            participant.appliedSpeedScale = targetScale;
             bar.setPercent(participant.speedPercent / 100.0F);
         }
     }
@@ -1584,12 +1579,17 @@ public final class IceRushGame {
             if (player.hasVehicle()) player.stopRiding();
             if (boat == null || boat.isRemoved()) {
                 boat = new BoatEntity(EntityType.BOAT, arenaWorld);
+                boat.setPosition(pos.x, pos.y, pos.z);
+                boat.setYaw(player.getYaw());
+                boat.setVelocity(Vec3d.ZERO);
                 playerBoats.put(participant.id, boat);
+                // Spawn only after the final position and rotation are assigned.
                 arenaWorld.spawnEntity(boat);
+            } else {
+                boat.setPosition(pos.x, pos.y, pos.z);
+                boat.setYaw(player.getYaw());
+                boat.setVelocity(Vec3d.ZERO);
             }
-            boat.setPosition(pos.x, pos.y, pos.z);
-            boat.setYaw(player.getYaw());
-            boat.setVelocity(Vec3d.ZERO);
             participant.appliedSpeedScale = 1.0;
             participant.turboTicks = 0;
             participant.turboActive = false;
@@ -1662,6 +1662,31 @@ public final class IceRushGame {
         winner = participants.values().stream().filter(p -> !p.eliminated).map(p -> p.id).findFirst().orElse(null);
         state = State.FINISHED;
         timer = config.finishHoldSeconds * 20;
+
+        // The race is over: release every competitor immediately. Do not keep
+        // enforcing seats during the celebration, and do not leave eliminated
+        // players trapped in spectator mode after the result is declared.
+        for (UUID id : participants.keySet()) {
+            ServerPlayerEntity competitor = server.getPlayerManager().getPlayer(id);
+            if (competitor != null) {
+                competitor.stopRiding();
+                competitor.changeGameMode(GameMode.ADVENTURE);
+                teleportToLobby(competitor);
+            }
+        }
+        for (UUID id : lateSpectators) {
+            ServerPlayerEntity spectator = server.getPlayerManager().getPlayer(id);
+            if (spectator != null) {
+                spectator.stopRiding();
+                spectator.changeGameMode(GameMode.ADVENTURE);
+                teleportToLobby(spectator);
+            }
+        }
+        for (BoatEntity boat : playerBoats.values()) {
+            if (!boat.isRemoved()) boat.discard();
+        }
+        playerBoats.clear();
+
         if (winner != null) {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(winner);
             String name = player == null ? "Víťaz" : player.getName().getString();

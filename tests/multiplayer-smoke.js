@@ -104,6 +104,18 @@ async function main() {
     if (!admin.vehicle || !guest.vehicle) {
       throw new Error('A competitor is not actually mounted in a boat after the race starts');
     }
+
+    // Exercise the actual vanilla serverbound boat-paddle packet. Earlier tests
+    // checked mounting only and therefore could pass while steering was broken.
+    const boatStart = admin.vehicle.position.clone();
+    admin._client.write('paddle', { left: true, right: true });
+    await new Promise(resolve => setTimeout(resolve, 1400));
+    admin._client.write('paddle', { left: false, right: false });
+    const boatDistance = admin.vehicle.position.distanceTo(boatStart);
+    if (boatDistance < 0.15) {
+      throw new Error('Boat did not move after receiving vanilla paddle input; distance=' + boatDistance.toFixed(3));
+    }
+
     for (const [name, bot] of [['admin', admin], ['guest', guest]]) {
       const dx = bot.vehicle.position.x - center.x;
       const dz = bot.vehicle.position.z - center.z;
