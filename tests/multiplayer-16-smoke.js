@@ -174,7 +174,7 @@ async function main() {
     // Disconnecting one competitor during parking must immediately remove one pad.
     const firstName = 'IceRushP01';
     bots.get(firstName).quit();
-    await waitFor(spectator, new RegExp(firstName + ' opustil zápas a vypadáva\.'));
+    await waitFor(spectator, new RegExp(firstName + ' opustil zápas a vypadáva\\.'));
     await new Promise(resolve => setTimeout(resolve, 350));
     spectator.chat('/icerush status');
     const afterStatus = await waitFor(spectator,
