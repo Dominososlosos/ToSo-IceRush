@@ -201,8 +201,13 @@ async function main() {
     // Clients already dropped by the runner have already been marked as losses.
     for (const [name, bot] of bots.entries()) {
       if (name === survivorName || name === disconnectName) continue;
-      if (bot._client && !bot._client.ended) bot.quit();
-      await waitFor(spectator, new RegExp(name + ' opustil zápas a vypadáva\\.'));
+      // A client that already dropped before the spectator joined has already
+      // been processed by the server; there is no reason to wait for an event
+      // the spectator could not have received.
+      if (bot._client && !bot._client.ended) {
+        bot.quit();
+        await waitFor(spectator, new RegExp(name + ' opustil zápas a vypadáva\\.'));
+      }
     }
     await waitFor(spectator, new RegExp(survivorName + ' VYHRÁVA ICE RUSH!'));
 
