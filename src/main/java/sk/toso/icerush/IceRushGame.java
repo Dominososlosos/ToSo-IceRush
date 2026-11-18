@@ -1827,7 +1827,11 @@ public final class IceRushGame {
     private void returnToLobby(ServerPlayerEntity player) {
         player.stopRiding();
         teleportToLobby(player);
-        player.changeGameMode(GameMode.ADVENTURE);
+        boolean modeChanged = player.changeGameMode(GameMode.ADVENTURE);
+        GameMode actualMode = player.getServerWorld().getServer()
+            .getPlayerInteractionManager(player).getGameMode();
+        IceRushMod.LOGGER.info("ICE RUSH lobby return for {}: changed={}, serverMode={}",
+            player.getName().getString(), modeChanged, actualMode);
         sendLobbyMenu(player);
     }
 
