@@ -160,9 +160,10 @@ async function main() {
     // may drop one of the 16 competitor sockets; the observer remains online
     // and receives the authoritative phase and disconnect broadcasts.
     await waitFor(spectator, /PARKOVANIE!/, 120_000);
+    const statusPattern = /ICE RUSH \| Stav: PARKING \| Kolo: 1 \| Hráči: \d+\/16 .*Aktívne parkoviská: \d+ .*Bloky: \d+\/\d+/;
+    const initialStatusPromise = waitForNewMessage(spectator, statusPattern);
     spectator.chat('/icerush status');
-    const initialStatus = await waitFor(spectator,
-      /ICE RUSH \| Stav: PARKING \| Kolo: 1 \| Hráči: \d+\/16 .*Aktívne parkoviská: \d+ .*Bloky: \d+\/\d+/);
+    const initialStatus = await initialStatusPromise;
     const initialMatch = initialStatus.match(/Hráči: (\d+)\/16 .*Aktívne parkoviská: (\d+) .*Bloky: (\d+)\/(\d+)/);
     if (!initialMatch) throw new Error('Could not parse authoritative parking status: ' + initialStatus);
     const activeBefore = Number(initialMatch[1]);
@@ -183,9 +184,9 @@ async function main() {
     disconnectBot.quit();
     await waitFor(spectator, new RegExp(disconnectName + ' opustil zápas a vypadáva\\.'));
     await new Promise(resolve => setTimeout(resolve, 350));
+    const afterStatusPromise = waitForNewMessage(spectator, statusPattern);
     spectator.chat('/icerush status');
-    const afterStatus = await waitFor(spectator,
-      /ICE RUSH \| Stav: PARKING \| Kolo: 1 \| Hráči: \d+\/16 .*Aktívne parkoviská: \d+ .*Bloky: \d+\/\d+/);
+    const afterStatus = await afterStatusPromise;
     const afterMatch = afterStatus.match(/Hráči: (\d+)\/16 .*Aktívne parkoviská: (\d+) .*Bloky: (\d+)\/(\d+)/);
     if (!afterMatch) throw new Error('Could not parse parking status after disconnect: ' + afterStatus);
     const activeAfter = Number(afterMatch[1]);
