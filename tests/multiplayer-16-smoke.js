@@ -216,7 +216,7 @@ async function main() {
     if (Math.abs(survivor.entity.position.y - lobbyPositionY) > 3) {
       throw new Error('Winner was not returned to the lobby after the match finished; expected y=' + lobbyPositionY + ', actual y=' + survivor.entity.position.y);
     }
-    if (survivor.game.gameMode !== 2) {
+    if (survivor.game.gameMode !== 'adventure') {
       throw new Error('Winner did not return to Adventure mode after the match finished; mode=' + survivor.game.gameMode);
     }
     survivor.chat('/icerush stats');
