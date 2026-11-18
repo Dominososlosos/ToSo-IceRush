@@ -1672,8 +1672,6 @@ public final class IceRushGame {
                 // Detach from both sides of the vehicle relationship before
                 // teleporting or removing the boat; this also flushes the
                 // passenger update to tracking clients.
-                Entity vehicle = competitor.getVehicle();
-                if (vehicle != null) vehicle.removePassenger(competitor);
                 competitor.stopRiding();
                 competitor.changeGameMode(GameMode.ADVENTURE);
                 teleportToLobby(competitor);
@@ -1682,8 +1680,6 @@ public final class IceRushGame {
         for (UUID id : lateSpectators) {
             ServerPlayerEntity spectator = server.getPlayerManager().getPlayer(id);
             if (spectator != null) {
-                Entity vehicle = spectator.getVehicle();
-                if (vehicle != null) vehicle.removePassenger(spectator);
                 spectator.stopRiding();
                 spectator.changeGameMode(GameMode.ADVENTURE);
                 teleportToLobby(spectator);
