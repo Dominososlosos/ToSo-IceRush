@@ -175,8 +175,13 @@ async function main() {
 
     const survivor = bots.get('IceRushP16');
     await new Promise(resolve => setTimeout(resolve, 1200));
-    if (survivor.vehicle) {
-      throw new Error('Winner remained mounted in a boat after the match finished');
+    // Verify the authoritative end-of-match return, not Mineflayer's cached
+    // vehicle pointer (which can lag an entity-passenger update).
+    if (survivor.entity.position.y < arenaCenter.y + 50) {
+      throw new Error('Winner was not returned to the lobby after the match finished; y=' + survivor.entity.position.y);
+    }
+    if (survivor.game.gameMode !== 2) {
+      throw new Error('Winner did not return to Adventure mode after the match finished; mode=' + survivor.game.gameMode);
     }
     survivor.chat('/icerush stats');
     await waitFor(survivor, /Výhry: 1.*Hry: 1/);
