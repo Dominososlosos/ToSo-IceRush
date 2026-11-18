@@ -232,7 +232,7 @@ async function main() {
     if (stats[offlineUuid('IceRushLate')]) throw new Error('Late spectator was incorrectly recorded as a competitor');
 
     fs.writeFileSync('server/config/multiplayer-16-test-result.txt',
-      'PASS: 16 competitors joined; 13/16 READY started the match; late joiner stayed spectator; parking disconnect was reconciled; one remaining player won; all 16 competitor stats persisted; spectator had no competitor stats; winner=' + survivorName + '\\n');
+      'PASS: 16 competitors joined; 13/16 READY started the match; late joiner stayed spectator; parking disconnect was reconciled; one remaining player won; all 16 competitor stats persisted; spectator had no competitor stats; winner=' + survivorName + '\n');
     console.log('PASS: 16-player capacity, late spectator isolation, parking disconnect reconciliation, winner resolution, and persisted statistics.');
   } finally {
     for (const bot of [...bots.values(), spectator]) {
