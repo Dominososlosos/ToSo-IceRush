@@ -157,7 +157,7 @@ public final class IceRushGame {
         if (state != State.WAITING) {
             lateSpectators.add(player.getUuid());
             phaseBar.addPlayer(player);
-            player.changeGameMode(GameMode.SPECTATOR);
+            player.interactionManager.changeGameMode(GameMode.SPECTATOR);
             teleportToLobby(player);
             player.sendMessage(Text.literal("Hra už prebieha. Do konca zápasu zostávaš divákom.").formatted(Formatting.YELLOW), false);
             player.sendMessage(Text.literal("Tvoj režim: " + (player.isSpectator() ? "DIVÁK" : "HRÁČ")), false);
@@ -171,7 +171,7 @@ public final class IceRushGame {
         participant.playerName = player.getName().getString();
         participants.put(player.getUuid(), participant);
         teleportToLobby(player);
-        player.changeGameMode(GameMode.ADVENTURE);
+        player.interactionManager.changeGameMode(GameMode.ADVENTURE);
         sendLobbyMenu(player);
         broadcast(source.getServer(), Text.literal(player.getName().getString() + " sa pripojil do ICE RUSH (" + participants.size() + "/" + config.maxPlayers + ").").formatted(Formatting.AQUA));
         return 1;
@@ -309,7 +309,7 @@ public final class IceRushGame {
         config.arenaZ = arenaCenter.getZ();
         config.save();
         for (ServerPlayerEntity player : source.getServer().getPlayerManager().getPlayerList()) {
-            player.changeGameMode(GameMode.ADVENTURE);
+            player.interactionManager.changeGameMode(GameMode.ADVENTURE);
             teleportToLobby(player);
             sendLobbyMenu(player);
         }
@@ -420,7 +420,7 @@ public final class IceRushGame {
         updateLobbyLeaderboard(source.getServer());
         for (ServerPlayerEntity player : source.getServer().getPlayerManager().getPlayerList()) {
             if (player.getServerWorld() == arenaWorld) {
-                player.changeGameMode(GameMode.ADVENTURE);
+                player.interactionManager.changeGameMode(GameMode.ADVENTURE);
                 teleportToLobby(player);
                 sendLobbyMenu(player);
             }
@@ -729,7 +729,7 @@ public final class IceRushGame {
     public void onPlayerJoin(ServerPlayerEntity player) {
         if (state == State.WAITING) {
             if (arenaWorld != null && lobbyPosition != null) {
-                player.changeGameMode(GameMode.ADVENTURE);
+                player.interactionManager.changeGameMode(GameMode.ADVENTURE);
                 teleportToLobby(player);
             }
             sendLobbyMenu(player);
@@ -740,7 +740,7 @@ public final class IceRushGame {
         // including a reconnect by an already eliminated competitor.
         lateSpectators.add(player.getUuid());
         phaseBar.addPlayer(player);
-        player.changeGameMode(GameMode.SPECTATOR);
+        player.interactionManager.changeGameMode(GameMode.SPECTATOR);
         teleportToLobby(player);
         player.sendMessage(Text.literal(existing != null && existing.eliminated
             ? "Už si bol vyradený. Do ďalšej hry zostávaš divákom."
@@ -1124,7 +1124,7 @@ public final class IceRushGame {
                         arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0F, 0.7F);
                     }
                     sendTitle(player, "VYPADÁVAŠ!", "Nenašiel si parkovacie miesto.");
-                    player.changeGameMode(GameMode.SPECTATOR);
+                    player.interactionManager.changeGameMode(GameMode.SPECTATOR);
                     player.sendMessage(Text.literal("VYPADÁVAŠ! Nenašiel/nenašla si parkovacie miesto. Body: " + participant.points).formatted(Formatting.RED, Formatting.BOLD), false);
                 }
             }
@@ -1471,7 +1471,7 @@ public final class IceRushGame {
                     arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0F, 0.7F);
                 }
                 sendTitle(player, "VYPADÁVAŠ!", "Prepadol si sa cez prasknutý ľad.");
-                player.changeGameMode(GameMode.SPECTATOR);
+                player.interactionManager.changeGameMode(GameMode.SPECTATOR);
                 player.sendMessage(Text.literal("VYPADÁVAŠ! Prepadol si sa cez prasknutý ľad. Body: " + participant.points).formatted(Formatting.RED, Formatting.BOLD), false);
             }
         }
@@ -1827,9 +1827,8 @@ public final class IceRushGame {
     private void returnToLobby(ServerPlayerEntity player) {
         player.stopRiding();
         teleportToLobby(player);
-        boolean modeChanged = player.changeGameMode(GameMode.ADVENTURE);
-        GameMode actualMode = player.getServerWorld().getServer()
-            .getPlayerInteractionManager(player).getGameMode();
+        boolean modeChanged = player.interactionManager.changeGameMode(GameMode.ADVENTURE);
+        GameMode actualMode = player.interactionManager.getGameMode();
         IceRushMod.LOGGER.info("ICE RUSH lobby return for {}: changed={}, serverMode={}",
             player.getName().getString(), modeChanged, actualMode);
         sendLobbyMenu(player);
