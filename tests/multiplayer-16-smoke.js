@@ -204,7 +204,7 @@ async function main() {
       if (bot._client && !bot._client.ended) bot.quit();
       await waitFor(spectator, new RegExp(name + ' opustil zápas a vypadáva\\.'));
     }
-    await waitFor(spectator, new RegExp(survivorName + ' VYHRÁVA ICE RUSH!/'));
+    await waitFor(spectator, new RegExp(survivorName + ' VYHRÁVA ICE RUSH!'));
 
     await new Promise(resolve => setTimeout(resolve, 1200));
     if (Math.abs(survivor.entity.position.y - lobbyPositionY) > 3) {
