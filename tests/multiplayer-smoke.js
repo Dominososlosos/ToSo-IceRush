@@ -110,11 +110,20 @@ async function main() {
     // Mineflayer does not simulate the vanilla client's local boat physics.
     // Send the real 1.20.1 paddle packet to verify it is accepted without
     // disconnecting or losing the assigned vehicle.
+    const boatPositionBeforeSteering = admin.vehicle.position.clone();
     admin._client.write('steer_boat', { leftPaddle: true, rightPaddle: true });
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1200));
     admin._client.write('steer_boat', { leftPaddle: false, rightPaddle: false });
+    await new Promise(resolve => setTimeout(resolve, 350));
     if (!admin.vehicle) {
       throw new Error('Competitor lost their assigned boat after vanilla paddle input');
+    }
+    const steeringDistance = Math.hypot(
+      admin.vehicle.position.x - boatPositionBeforeSteering.x,
+      admin.vehicle.position.z - boatPositionBeforeSteering.z
+    );
+    if (steeringDistance < 0.15) {
+      throw new Error('Vanilla boat paddle input was accepted but did not move the boat; distance=' + steeringDistance.toFixed(3));
     }
 
     for (const [name, bot] of [['admin', admin], ['guest', guest]]) {
