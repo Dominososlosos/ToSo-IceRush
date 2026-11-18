@@ -107,13 +107,25 @@ async function main() {
 
     // Exercise the actual vanilla serverbound boat-paddle packet. Earlier tests
     // checked mounting only and therefore could pass while steering was broken.
+    const yawStart = admin.vehicle.yaw;
+    admin._client.write('steer_boat', { leftPaddle: true, rightPaddle: false });
+    await new Promise(resolve => setTimeout(resolve, 900));
+    admin._client.write('steer_boat', { leftPaddle: false, rightPaddle: false });
+    const yawDelta = Math.abs(Math.atan2(
+      Math.sin(admin.vehicle.yaw - yawStart),
+      Math.cos(admin.vehicle.yaw - yawStart)
+    ));
+    if (yawDelta < 0.01) {
+      throw new Error('Boat did not turn after receiving vanilla steer_boat input; yaw delta=' + yawDelta.toFixed(4));
+    }
+
     const boatStart = admin.vehicle.position.clone();
-    admin._client.write('paddle', { left: true, right: true });
+    admin._client.write('steer_boat', { leftPaddle: true, rightPaddle: true });
     await new Promise(resolve => setTimeout(resolve, 1400));
-    admin._client.write('paddle', { left: false, right: false });
+    admin._client.write('steer_boat', { leftPaddle: false, rightPaddle: false });
     const boatDistance = admin.vehicle.position.distanceTo(boatStart);
     if (boatDistance < 0.15) {
-      throw new Error('Boat did not move after receiving vanilla paddle input; distance=' + boatDistance.toFixed(3));
+      throw new Error('Boat did not move after receiving vanilla steer_boat input; distance=' + boatDistance.toFixed(3));
     }
 
     for (const [name, bot] of [['admin', admin], ['guest', guest]]) {
