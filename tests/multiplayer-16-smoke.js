@@ -156,12 +156,12 @@ async function main() {
     await readyRejected;
     await spectatorStillConfirmed;
 
-    await waitFor(bots.get('IceRushP01'), /PARKOVANIE!/, 120_000);
-    // Some headless clients may disconnect under 16-client CI load. Read the
-    // authoritative live count and verify the pad/block invariant rather than
-    // assuming all 16 sockets remain connected.
-    bots.get('IceRushP16').chat('/icerush status');
-    const initialStatus = await waitFor(bots.get('IceRushP16'),
+    // Use the late spectator as a stable observer. Under CI load, Mineflayer
+    // may drop one of the 16 competitor sockets; the observer remains online
+    // and receives the authoritative phase and disconnect broadcasts.
+    await waitFor(spectator, /PARKOVANIE!/, 120_000);
+    spectator.chat('/icerush status');
+    const initialStatus = await waitFor(spectator,
       /ICE RUSH \| Stav: PARKING \| Kolo: 1 \| Hráči: \d+\/16 .*Aktívne parkoviská: \d+ .*Bloky: \d+\/\d+/);
     const initialMatch = initialStatus.match(/Hráči: (\d+)\/16 .*Aktívne parkoviská: (\d+) .*Bloky: (\d+)\/(\d+)/);
     if (!initialMatch) throw new Error('Could not parse authoritative parking status: ' + initialStatus);
@@ -173,10 +173,15 @@ async function main() {
       throw new Error('Parking count does not match active players: ' + initialStatus);
     }
 
-    // Disconnecting one competitor during parking must immediately remove one pad.
-    const firstName = 'IceRushP01';
-    bots.get(firstName).quit();
-    await waitFor(spectator, new RegExp(firstName + ' opustil zápas a vypadáva\\.'));
+    // Choose a real connected competitor to disconnect during PARKING, and a
+    // different connected competitor to remain until the match is resolved.
+    const connected = [...bots.entries()].filter(([name, bot]) =>
+      bot.entity && bot._client && !bot._client.ended);
+    if (connected.length < 3) throw new Error('Too few connected competitors remain to verify parking disconnect and winner resolution');
+    const [survivorName, survivor] = connected[connected.length - 1];
+    const [disconnectName, disconnectBot] = connected[0];
+    disconnectBot.quit();
+    await waitFor(spectator, new RegExp(disconnectName + ' opustil zápas a vypadáva\\.'));
     await new Promise(resolve => setTimeout(resolve, 350));
     spectator.chat('/icerush status');
     const afterStatus = await waitFor(spectator,
@@ -187,21 +192,21 @@ async function main() {
     const padsAfter = Number(afterMatch[2]);
     const blocksAfter = Number(afterMatch[3]);
     const totalAfter = Number(afterMatch[4]);
-    if (padsAfter !== Math.max(0, activeAfter - 1) || blocksAfter !== padsAfter * 9 || totalAfter !== blocksAfter) {
+    if (activeAfter !== activeBefore - 1 || padsAfter !== Math.max(0, activeAfter - 1)
+        || blocksAfter !== padsAfter * 9 || totalAfter !== blocksAfter) {
       throw new Error('Parking pads were not reconciled after disconnect: ' + afterStatus);
     }
 
-    for (let i = 2; i < PLAYER_COUNT; i++) {
-      const name = 'IceRushP' + String(i).padStart(2, '0');
-      bots.get(name).quit();
+    // All remaining competitors except the selected survivor disconnect.
+    // Clients already dropped by the runner have already been marked as losses.
+    for (const [name, bot] of bots.entries()) {
+      if (name === survivorName || name === disconnectName) continue;
+      if (bot._client && !bot._client.ended) bot.quit();
       await waitFor(spectator, new RegExp(name + ' opustil zápas a vypadáva\\.'));
     }
-    await waitFor(spectator, /IceRushP16 VYHRÁVA ICE RUSH!/);
+    await waitFor(spectator, new RegExp(survivorName + ' VYHRÁVA ICE RUSH!/'));
 
-    const survivor = bots.get('IceRushP16');
     await new Promise(resolve => setTimeout(resolve, 1200));
-    // Verify the authoritative end-of-match return, not Mineflayer's cached
-    // vehicle pointer (which can lag an entity-passenger update).
     if (Math.abs(survivor.entity.position.y - lobbyPositionY) > 3) {
       throw new Error('Winner was not returned to the lobby after the match finished; expected y=' + lobbyPositionY + ', actual y=' + survivor.entity.position.y);
     }
@@ -210,22 +215,21 @@ async function main() {
     }
     survivor.chat('/icerush stats');
     await waitFor(survivor, /Výhry: 1.*Hry: 1/);
-    await waitFor(survivor, /Úspešnosť: 100\.0%.*Prehry: 0/);
+    await waitFor(survivor, /Úspešnosť: 100\\.0%.*Prehry: 0/);
 
     const stats = JSON.parse(fs.readFileSync('server/config/icerush-stats.json', 'utf8'));
     for (let i = 1; i <= PLAYER_COUNT; i++) {
       const name = 'IceRushP' + String(i).padStart(2, '0');
       const row = stats[offlineUuid(name)];
       if (!row || row.gamesPlayed !== 1) throw new Error(name + ' missing exactly one completed game in persisted stats');
-      if (i === PLAYER_COUNT && (row.wins !== 1 || row.losses !== 0)) throw new Error('Last connected competitor did not receive the win');
-      if (i !== PLAYER_COUNT && (row.wins !== 0 || row.losses !== 1)) throw new Error(name + ' disconnect was not recorded as a loss');
+      if (name === survivorName && (row.wins !== 1 || row.losses !== 0)) throw new Error(name + ' did not receive the win');
+      if (name !== survivorName && (row.wins !== 0 || row.losses !== 1)) throw new Error(name + ' disconnect was not recorded as a loss');
     }
     if (stats[offlineUuid('IceRushLate')]) throw new Error('Late spectator was incorrectly recorded as a competitor');
-    
 
     fs.writeFileSync('server/config/multiplayer-16-test-result.txt',
-      'PASS: 16 competitors joined; 13/16 READY started the match; 17th late joiner stayed spectator and could not READY; 15 competitors disconnected; remaining player won; all 16 competitor stats persisted; spectator had no competitor stats.\n');
-    console.log('PASS: 16-player capacity, late spectator isolation, multiple disconnects, winner resolution, and persisted statistics.');
+      'PASS: 16 competitors joined; 13/16 READY started the match; late joiner stayed spectator; parking disconnect was reconciled; one remaining player won; all 16 competitor stats persisted; spectator had no competitor stats.\\n');
+    console.log('PASS: 16-player capacity, late spectator isolation, parking disconnect reconciliation, winner resolution, and persisted statistics.');
   } finally {
     for (const bot of [...bots.values(), spectator]) {
       if (!bot) continue;
