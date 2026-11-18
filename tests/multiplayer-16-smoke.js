@@ -10,6 +10,7 @@ const PLAYER_COUNT = 16;
 const bots = new Map();
 let spectator;
 let arenaCenter;
+let lobbyPositionY;
 
 function connect(username) {
   const bot = mineflayer.createBot({ host: HOST, port: PORT, username, version: '1.20.1', auth: 'offline' });
@@ -102,6 +103,7 @@ async function main() {
         // Setup teleports the admin to the lobby directly above the exact arena centre.
         arenaCenter.x = Math.floor(bot.entity.position.x);
         arenaCenter.z = Math.floor(bot.entity.position.z);
+        lobbyPositionY = bot.entity.position.y;
         arenaCenter.y = Math.floor(bot.entity.position.y) - 80;
         const npcXOffsets = [-6.5, -3.7, -0.9, 1.9, 4.7, 7.5];
         const characters = Object.values(bot.entities).filter(entity =>
@@ -200,8 +202,8 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 1200));
     // Verify the authoritative end-of-match return, not Mineflayer's cached
     // vehicle pointer (which can lag an entity-passenger update).
-    if (survivor.entity.position.y < arenaCenter.y + 50) {
-      throw new Error('Winner was not returned to the lobby after the match finished; y=' + survivor.entity.position.y);
+    if (Math.abs(survivor.entity.position.y - lobbyPositionY) > 3) {
+      throw new Error('Winner was not returned to the lobby after the match finished; expected y=' + lobbyPositionY + ', actual y=' + survivor.entity.position.y);
     }
     if (survivor.game.gameMode !== 2) {
       throw new Error('Winner did not return to Adventure mode after the match finished; mode=' + survivor.game.gameMode);
