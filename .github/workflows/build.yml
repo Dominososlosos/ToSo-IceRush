@@ -247,5 +247,8 @@ jobs:
           if grep -q 'Expected whitespace to end one argument' server/logs/latest.log; then echo 'Scoreboard command parsing failed'; cat server/logs/latest.log; exit 1; fi
           test -f server/config/multiplayer-16-test-result.txt
           grep -q 'PASS: 16 competitors joined' server/config/multiplayer-16-test-result.txt
+          WINNER="$(sed -n 's/.*winner=//p' server/config/multiplayer-16-test-result.txt)"
+          test -n "$WINNER"
+          grep -F "ICE RUSH lobby return for ${WINNER}:" server/logs/latest.log | grep -q 'serverMode=ADVENTURE'
           grep -q '"gamesPlayed": 1' server/config/icerush-stats.json
-          echo 'PASS: 16-player, late-spectator, disconnect and winner-persistence integration test.'
+          echo 'PASS: 16-player, late-spectator, disconnect, Adventure return and winner-persistence integration test.'
