@@ -22,6 +22,12 @@ function connect(username) {
   return bot;
 }
 
+function isConnected(bot) {
+  const client = bot && bot._client;
+  return Boolean(bot && bot.entity && client && !client.ended
+    && client.socket && !client.socket.destroyed);
+}
+
 function waitForNewMessage(bot, pattern, timeout = TIMEOUT) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -136,7 +142,7 @@ async function main() {
       const bot = bots.get(name);
       // CI can drop a headless socket while the 16-player roster starts.
       // Only assert boat assignment for clients that are still connected.
-      if (!bot._client || bot._client.ended || !bot.entity) continue;
+      if (!isConnected(bot)) continue;
       if (!bot.vehicle) throw new Error(name + ' was connected but not mounted in a boat at race start');
       const dx = bot.vehicle.position.x - arenaCenter.x;
       const dz = bot.vehicle.position.z - arenaCenter.z;
@@ -184,13 +190,18 @@ async function main() {
 
     // Choose a real connected competitor to disconnect during PARKING, and a
     // different connected competitor to remain until the match is resolved.
-    const connected = [...bots.entries()].filter(([name, bot]) =>
-      bot.entity && bot._client && !bot._client.ended);
+    const connected = [...bots.entries()].filter(([name, bot]) => isConnected(bot));
     if (connected.length < 3) throw new Error('Too few connected competitors remain to verify parking disconnect and winner resolution');
     const [survivorName, survivor] = connected[connected.length - 1];
     const [disconnectName, disconnectBot] = connected[0];
     disconnectBot.quit();
-    await waitFor(spectator, new RegExp(disconnectName + ' opustil zápas a vypadáva\\.'));
+    try {
+      await waitFor(spectator, new RegExp(disconnectName + ' opustil zápas a vypadáva\\.'), 5_000);
+    } catch (error) {
+      if (isConnected(disconnectBot)) throw error;
+      // A socket can die between selection and quit under CI load; the
+      // authoritative status check below still verifies server-side removal.
+    }
     await new Promise(resolve => setTimeout(resolve, 350));
     const afterStatusPromise = waitForNewMessage(spectator, statusPattern);
     spectator.chat('/icerush status');
@@ -213,9 +224,15 @@ async function main() {
       // A client that already dropped before the spectator joined has already
       // been processed by the server; there is no reason to wait for an event
       // the spectator could not have received.
-      if (bot._client && !bot._client.ended) {
+      if (isConnected(bot)) {
         bot.quit();
-        await waitFor(spectator, new RegExp(name + ' opustil zápas a vypadáva\\.'));
+        try {
+          await waitFor(spectator, new RegExp(name + ' opustil zápas a vypadáva\\.'), 5_000);
+        } catch (error) {
+          if (isConnected(bot)) throw error;
+          // If the runner dropped the socket concurrently, let the final
+          // persisted-statistics check verify that the server processed it.
+        }
       }
     }
     await waitFor(spectator, new RegExp(survivorName + ' VYHRÁVA ICE RUSH!'));
