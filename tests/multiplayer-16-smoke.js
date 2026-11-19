@@ -110,7 +110,19 @@ async function main() {
         arenaCenter.x = Math.floor(bot.entity.position.x);
         arenaCenter.z = Math.floor(bot.entity.position.z);
         lobbyPositionY = bot.entity.position.y;
-        arenaCenter.y = Math.floor(bot.entity.position.y) - 80;
+        arenaCenter.y = Math.floor(bot.entity.position.y) - 16;
+        const lobbyFloor = bot.blockAt(new Vec3(arenaCenter.x, arenaCenter.y + 15, arenaCenter.z));
+        if (!lobbyFloor || lobbyFloor.name !== 'light_blue_stained_glass') {
+          throw new Error('Lobby platform floor was not generated at the expected height; found ' + (lobbyFloor && lobbyFloor.name));
+        }
+        const trackFloor = bot.blockAt(new Vec3(arenaCenter.x + 41, arenaCenter.y - 1, arenaCenter.z));
+        if (!trackFloor || trackFloor.name !== 'blue_ice') {
+          throw new Error('Flat Blue Ice track was not generated; found ' + (trackFloor && trackFloor.name));
+        }
+        const centerFloor = bot.blockAt(new Vec3(arenaCenter.x, arenaCenter.y - 1, arenaCenter.z));
+        if (!centerFloor || centerFloor.name !== 'air') {
+          throw new Error('Arena center must be open while waiting; found ' + (centerFloor && centerFloor.name));
+        }
         const npcXOffsets = [-6.5, -3.7, -0.9, 1.9, 4.7, 7.5];
         const characters = Object.values(bot.entities).filter(entity =>
           entity.name === 'armor_stand'
