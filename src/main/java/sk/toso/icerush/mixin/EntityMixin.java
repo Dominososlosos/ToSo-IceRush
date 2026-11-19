@@ -13,7 +13,6 @@ public abstract class EntityMixin {
     @Inject(method = "stopRiding", at = @At("HEAD"), cancellable = true)
     private void icerush$keepActivePlayerInBoat(CallbackInfo callback) {
         if ((Object) this instanceof ServerPlayerEntity player
-            && player.isSneaking()
             && IceRushMod.shouldPreventDismount(player)) {
             callback.cancel();
         }
