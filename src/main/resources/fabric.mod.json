@@ -6,6 +6,7 @@
   "description": "Round-based multiplayer ice boat survival minigame.",
   "authors": ["ToSo"],
   "environment": "server",
+  "mixins": [ "icerush.mixins.json" ],
   "entrypoints": {
     "main": ["sk.toso.icerush.IceRushMod"]
   },

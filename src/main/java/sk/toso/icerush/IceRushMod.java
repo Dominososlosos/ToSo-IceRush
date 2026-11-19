@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.InteractionEntity;
 import net.minecraft.util.ActionResult;
 import org.slf4j.Logger;
@@ -15,10 +16,16 @@ import org.slf4j.LoggerFactory;
 public final class IceRushMod implements ModInitializer {
     public static final String MOD_ID = "icerush";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    private static IceRushGame gameInstance;
+
+    public static boolean shouldPreventDismount(ServerPlayerEntity player) {
+        return gameInstance != null && gameInstance.shouldPreventDismount(player);
+    }
 
     @Override
     public void onInitialize() {
         IceRushGame game = new IceRushGame();
+        gameInstance = game;
         CommandRegistrationCallback.EVENT.register(game::registerCommands);
         ServerTickEvents.END_SERVER_TICK.register(game::tick);
         ServerLifecycleEvents.SERVER_STARTED.register(game::onServerStarted);

@@ -99,22 +99,36 @@ async function main() {
     admin.chat('/icerush ready');
     guest.chat('/icerush ready');
     await waitFor(admin, /ICE RUSH sa začína!/);
-    await waitFor(admin, /ŠTART! Kolo 1 — jazda!/);
+    await waitFor(admin, /ŠTART!/);
     await new Promise(resolve => setTimeout(resolve, 600));
     if (!admin.vehicle || !guest.vehicle) {
       throw new Error('A competitor is not actually mounted in a boat after the race starts');
     }
 
-    // Exercise the actual vanilla serverbound boat-paddle packet. Earlier tests
-    // checked mounting only and therefore could pass while steering was broken.
-    // Mineflayer does not simulate the vanilla client's local boat physics.
-    // Send the real 1.20.1 paddle packet to verify it is accepted without
-    // disconnecting or losing the assigned vehicle.
+    // Mineflayer is a protocol bot and does not run the vanilla client's
+    // local BoatEntity steering physics. Exercise both real 1.20.1 packets:
+    // paddle state, followed by the vehicle position update a vanilla client
+    // sends after its local physics tick.
+    const controlledBoat = admin.vehicle;
+    const startBoatPosition = controlledBoat.position.clone();
     admin._client.write('steer_boat', { leftPaddle: true, rightPaddle: true });
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 150));
+    admin._client.write('vehicle_move', {
+      x: startBoatPosition.x + 0.75,
+      y: startBoatPosition.y,
+      z: startBoatPosition.z,
+      yaw: controlledBoat.yaw,
+      pitch: controlledBoat.pitch
+    });
+    await new Promise(resolve => setTimeout(resolve, 350));
     admin._client.write('steer_boat', { leftPaddle: false, rightPaddle: false });
-    if (!admin.vehicle) {
-      throw new Error('Competitor lost their assigned boat after vanilla paddle input');
+    await new Promise(resolve => setTimeout(resolve, 250));
+    if (!admin.vehicle || admin.vehicle.id !== controlledBoat.id) {
+      throw new Error('Competitor lost their assigned boat after vanilla paddle and vehicle movement packets');
+    }
+    const boatTravel = admin.vehicle.position.distanceTo(startBoatPosition);
+    if (boatTravel < 0.35) {
+      throw new Error('Server did not preserve vanilla client boat movement; distance=' + boatTravel.toFixed(3));
     }
 
     for (const [name, bot] of [['admin', admin], ['guest', guest]]) {
@@ -125,10 +139,12 @@ async function main() {
         throw new Error(name + ' boat did not start on the track ring; radial distance=' + radius.toFixed(2));
       }
     }
-    // Simulate Shift/dismount: the server must safely remount the competitor.
+    // Simulate Shift/dismount: only this manual request is blocked during the race.
     admin.dismount();
     await new Promise(resolve => setTimeout(resolve, 600));
-    if (!admin.vehicle) throw new Error('The player remained dismounted after the server seat-repair tick');
+    if (!admin.vehicle || admin.vehicle.id !== controlledBoat.id) {
+      throw new Error('Sneak dismount was not blocked while the competitor was racing');
+    }
     await waitFor(admin, /PARKOVANIE!/);
 
     // Ask the server itself to count the real 3x3 concrete blocks.
