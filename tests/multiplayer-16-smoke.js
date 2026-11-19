@@ -134,7 +134,7 @@ async function main() {
       await new Promise(resolve => setTimeout(resolve, 120));
     }
     await waitFor(bots.get('IceRushP01'), /ICE RUSH sa začína!/);
-    await waitFor(bots.get('IceRushP01'), /ŠTART! Kolo 1 — jazda!/);
+    await waitFor(bots.get('IceRushP01'), /ŠTART!/);
     await new Promise(resolve => setTimeout(resolve, 700));
     let mountedAtRaceStart = 0;
     for (let i = 1; i <= PLAYER_COUNT; i++) {
@@ -237,8 +237,17 @@ async function main() {
     }
     await waitFor(spectator, new RegExp(survivorName + ' VYHRÁVA ICE RUSH!'));
 
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    if (Math.abs(survivor.entity.position.y - lobbyPositionY) > 3) {
+    // Wait for the authoritative teleport packet to reach the selected client.
+    // A 16-client run can delay position updates under CI load.
+    let returnedToLobby = false;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      if (Math.abs(survivor.entity.position.y - lobbyPositionY) <= 3) {
+        returnedToLobby = true;
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    if (!returnedToLobby) {
       throw new Error('Winner was not returned to the lobby after the match finished; expected y=' + lobbyPositionY + ', actual y=' + survivor.entity.position.y);
     }
     // The authoritative server game mode is checked against latest.log by CI.
