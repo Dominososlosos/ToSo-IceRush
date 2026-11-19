@@ -16,8 +16,8 @@ Install the built ICE RUSH JAR in the server `mods` folder and start the server.
 ## Arena and lobby
 
 - [ ] Run `/icerush setup` as an administrator at the intended arena center.
-- [ ] Verify the circular Blue Ice ring: 90-block outside diameter, 7-block width, empty middle.
-- [ ] Verify the lobby is 80 blocks above the track and has a glass viewing section.
+- [ ] Verify the circular, flat Blue Ice ring: 90-block outside diameter, 7-block width, empty middle; confirm there are no turtle eggs, stairs or leftover blocks on the track surface.
+- [ ] Verify the lobby is a solid, safe platform 16 blocks above the track (or lower when required by the world ceiling) and has a glass viewing section.
 - [ ] Verify the six physical lobby controls: JOIN, READY, PRAVIDLÁ, TOP 10, ŠTATISTIKY, POSLEDNÝ VÍŤAZ.
 - [ ] Verify the in-world TOP 10 board and last-winner display update after a completed match.
 - [ ] Right-click each control and verify that it invokes the matching action.
