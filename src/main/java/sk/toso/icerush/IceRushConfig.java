@@ -107,7 +107,7 @@ final class IceRushConfig {
         maxRideSeconds = clamp(maxRideSeconds, minRideSeconds, 600);
         parkingSeconds = clamp(parkingSeconds, 5, 120);
         finishHoldSeconds = clamp(finishHoldSeconds, 1, 60);
-        lobbyHeight = clamp(lobbyHeight, 8, 64);
+        lobbyHeight = clamp(lobbyHeight, 8, 16);
         trackInnerRadius = Math.max(5.0, Math.min(trackInnerRadius, 100.0));
         trackOuterRadius = Math.max(trackInnerRadius + 1.0, Math.min(trackOuterRadius, 120.0));
         turboZones = clamp(turboZones, 0, 32);
