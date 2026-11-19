@@ -105,23 +105,30 @@ async function main() {
       throw new Error('A competitor is not actually mounted in a boat after the race starts');
     }
 
-    // Exercise the actual vanilla serverbound boat-paddle packet. Earlier tests
-    // checked mounting only and therefore could pass while steering was broken.
-    // Mineflayer does not simulate the vanilla client's local boat physics.
-    // Send the real 1.20.1 paddle packet to verify it is accepted without
-    // disconnecting or losing the assigned vehicle.
+    // Mineflayer is a protocol bot and does not run the vanilla client's
+    // local BoatEntity steering physics. Exercise both real 1.20.1 packets:
+    // paddle state, followed by the vehicle position update a vanilla client
+    // sends after its local physics tick.
     const controlledBoat = admin.vehicle;
     const startBoatPosition = controlledBoat.position.clone();
     admin._client.write('steer_boat', { leftPaddle: true, rightPaddle: true });
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 150));
+    admin._client.write('vehicle_move', {
+      x: startBoatPosition.x + 0.75,
+      y: startBoatPosition.y,
+      z: startBoatPosition.z,
+      yaw: controlledBoat.yaw,
+      pitch: controlledBoat.pitch
+    });
+    await new Promise(resolve => setTimeout(resolve, 350));
     admin._client.write('steer_boat', { leftPaddle: false, rightPaddle: false });
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 250));
     if (!admin.vehicle || admin.vehicle.id !== controlledBoat.id) {
-      throw new Error('Competitor lost their assigned boat after vanilla paddle input');
+      throw new Error('Competitor lost their assigned boat after vanilla paddle and vehicle movement packets');
     }
     const boatTravel = admin.vehicle.position.distanceTo(startBoatPosition);
-    if (boatTravel < 0.15) {
-      throw new Error('Vanilla boat paddle input did not move the ICE RUSH boat on blue ice; distance=' + boatTravel.toFixed(3));
+    if (boatTravel < 0.35) {
+      throw new Error('Server did not preserve vanilla client boat movement; distance=' + boatTravel.toFixed(3));
     }
 
     for (const [name, bot] of [['admin', admin], ['guest', guest]]) {
