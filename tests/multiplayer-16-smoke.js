@@ -109,6 +109,7 @@ async function main() {
         if (Math.abs(bot.entity.position.y - lobbyPositionY) > 3) {
           throw new Error('Saved arena did not teleport the first player to the migrated lobby; y=' + bot.entity.position.y);
         }
+        await new Promise(resolve => setTimeout(resolve, 500));
         const lobbyFloor = bot.blockAt(new Vec3(arenaCenter.x, arenaCenter.y + 15, arenaCenter.z));
         if (!lobbyFloor || lobbyFloor.name !== 'light_blue_stained_glass') {
           throw new Error('Lobby platform floor was not generated at the expected height; found ' + (lobbyFloor && lobbyFloor.name));
