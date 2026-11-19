@@ -977,6 +977,7 @@ public final class IceRushGame {
         occupiedSpots.clear();
         for (Participant p : participants.values()) { p.parked = false; p.parkingRewarded = false; p.parkingSpot = -1; }
         broadcast(server, Text.literal("PARKOVANIE! Nájdeš si voľné miesto skôr než ostatní?").formatted(Formatting.GOLD, Formatting.BOLD));
+        playSoundToActivePlayers(server, SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), SoundCategory.PLAYERS, 0.65F, 0.82F);
     }
 
     private void showParkingPads() {
@@ -1177,6 +1178,12 @@ public final class IceRushGame {
             );
         }
         scoreboard.setObjectiveSlot(net.minecraft.scoreboard.Scoreboard.getDisplaySlotId("sidebar"), objective);
+        // Remove the legacy sixth line (round + timer) from scoreboards saved by older versions.
+        String legacyTimerHolder = String.valueOf((char) 0x2062);
+        scoreboard.resetPlayerScore(legacyTimerHolder, objective);
+        if (scoreboard.getPlayerTeam(legacyTimerHolder) != null) {
+            scoreboard.clearPlayerTeam(legacyTimerHolder);
+        }
 
         long readyCount = participants.values().stream().filter(p -> p.ready).count();
         String phase = switch (state) {
