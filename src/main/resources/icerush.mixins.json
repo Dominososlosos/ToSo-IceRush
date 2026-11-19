@@ -4,7 +4,7 @@
   "package": "sk.toso.icerush.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "EntityMixin"
+    "ServerPlayNetworkHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
