@@ -1668,6 +1668,16 @@ public final class IceRushGame {
         }
     }
 
+    /** Keep active competitors seated: vanilla dismounts boats when the rider sneaks. */
+    public boolean shouldPreventDismount(ServerPlayerEntity player) {
+        if (state != State.COUNTDOWN && state != State.RACING && state != State.PARKING) return false;
+        Participant participant = participants.get(player.getUuid());
+        if (participant == null || participant.eliminated) return false;
+        BoatEntity assignedBoat = playerBoats.get(participant.id);
+        return assignedBoat != null && !assignedBoat.isRemoved()
+            && player.getVehicle() == assignedBoat && assignedBoat.hasPassenger(player);
+    }
+
     private void declareWinner(MinecraftServer server) {
         hideParkingPads();
         resetCracks();
