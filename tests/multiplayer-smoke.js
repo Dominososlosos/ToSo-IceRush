@@ -75,6 +75,8 @@ async function main() {
     if (Math.abs(admin.entity.position.y - (center.y + 16)) >= 2) {
       throw new Error('Admin was not teleported to the 16-block lobby; y=' + admin.entity.position.y);
     }
+    // Wait for the client to receive the freshly generated lobby chunk section.
+    await new Promise(resolve => setTimeout(resolve, 1000));
     const lobbyFloor = admin.blockAt(new Vec3(center.x, center.y + 15, center.z));
     if (!lobbyFloor || lobbyFloor.name !== 'light_blue_stained_glass') {
       throw new Error('Lobby floor was not generated at the expected height; found ' + (lobbyFloor && lobbyFloor.name));
