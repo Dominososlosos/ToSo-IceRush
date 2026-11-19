@@ -1542,41 +1542,70 @@ public final class IceRushGame {
         }
     }
 
-    private void spawnRoundBoats(MinecraftServer server) {
-        if (arenaWorld == null || startPositions.isEmpty()) return;
-        Collections.shuffle(startPositions);
-        int index = 0;
-        for (Participant participant : participants.values()) {
-            if (participant.eliminated) continue;
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
-            if (player == null) continue;
-            Vec3d pos = startPositions.get(index++ % startPositions.size());
-            BoatEntity boat = playerBoats.get(participant.id);
-            if (boat == null || boat.isRemoved()) {
-                boat = new BoatEntity(EntityType.BOAT, arenaWorld);
-                participant.appliedSpeedScale = 1.0;
-                boat.setPosition(pos);
-                arenaWorld.spawnEntity(boat);
-                playerBoats.put(participant.id, boat);
-            } else {
-                boat.setPosition(pos);
-                boat.setVelocity(Vec3d.ZERO);
-            }
-            boat.setYaw(player.getYaw());
-            boat.setVelocity(Vec3d.ZERO);
-            player.stopRiding();
-            player.teleport(arenaWorld, pos.x, pos.y + 0.15, pos.z, player.getYaw(), 0.0F);
-            if (!player.startRiding(boat, true)) {
-                player.teleport(arenaWorld, pos.x, pos.y + 0.6, pos.z, player.getYaw(), 0.0F);
-                player.startRiding(boat, true);
-            }
-        }
+    /**
+     * Resolve and load the exact block column below a boat start. Restore the
+     * intended blue-ice surface and clear the boat/player collision space.
+     */
+    private Vec3d prepareBoatStartPosition(Vec3d requested) {
+        BlockPos floor = BlockPos.ofFloored(requested.x, requested.y - 0.01, requested.z);
+        arenaWorld.getChunk(floor);
+        arenaWorld.setBlockState(floor, Blocks.BLUE_ICE.getDefaultState());
+        arenaWorld.setBlockState(floor.up(), Blocks.AIR.getDefaultState());
+        arenaWorld.setBlockState(floor.up(2), Blocks.AIR.getDefaultState());
+        return new Vec3d(floor.getX() + 0.5, floor.getY() + 1.0, floor.getZ() + 0.5);
     }
 
-    private void spawnMissingRoundBoats(MinecraftServer server) {
+    /**
+     * A single server-authoritative path for creating, moving and mounting
+     * round boats. The player is never left teleported above an unmounted boat.
+     */
+    private BoatEntity placeAndMountRoundBoat(ServerPlayerEntity player, Participant participant,
+                                               Vec3d requested, BoatEntity boat) {
+        Vec3d pos = prepareBoatStartPosition(requested);
+
+        if (player.hasVehicle()) player.stopRiding();
+        if (boat != null && !boat.isRemoved()) boat.removeAllPassengers();
+
+        if (boat == null || boat.isRemoved()) {
+            boat = new BoatEntity(EntityType.BOAT, arenaWorld);
+            boat.refreshPositionAndAngles(pos.x, pos.y, pos.z, player.getYaw(), 0.0F);
+            boat.setVelocity(Vec3d.ZERO);
+            if (!arenaWorld.spawnEntity(boat)) {
+                IceRushMod.LOGGER.error("ICE RUSH could not spawn boat for {} at {}",
+                    player.getGameProfile().getName(), pos);
+                player.teleport(arenaWorld, pos.x, pos.y, pos.z, player.getYaw(), 0.0F);
+                player.setVelocity(Vec3d.ZERO);
+                return null;
+            }
+        } else {
+            boat.refreshPositionAndAngles(pos.x, pos.y, pos.z, player.getYaw(), 0.0F);
+            boat.setVelocity(Vec3d.ZERO);
+        }
+
+        playerBoats.put(participant.id, boat);
+        participant.appliedSpeedScale = 1.0;
+        participant.turboTicks = 0;
+        participant.turboActive = false;
+        player.setVelocity(Vec3d.ZERO);
+
+        boolean mounted = player.startRiding(boat, true);
+        if (!mounted || player.getVehicle() != boat || !boat.hasPassenger(player)) {
+            // Safe fallback: the player stands on the repaired ice, never in mid-air.
+            player.teleport(arenaWorld, pos.x, pos.y, pos.z, player.getYaw(), 0.0F);
+            player.setVelocity(Vec3d.ZERO);
+            mounted = player.startRiding(boat, true);
+        }
+        if (!mounted || player.getVehicle() != boat || !boat.hasPassenger(player)) {
+            player.teleport(arenaWorld, pos.x, pos.y, pos.z, player.getYaw(), 0.0F);
+            player.setVelocity(Vec3d.ZERO);
+            IceRushMod.LOGGER.error("ICE RUSH could not mount {} on boat {} at safe start {}",
+                player.getGameProfile().getName(), boat.getUuid(), pos);
+        }
+        return boat;
+    }
+
+    private void spawnRoundBoats(MinecraftServer server) {
         if (arenaWorld == null || startPositions.isEmpty()) return;
-        // Every round starts on the driving ring. Reusing a boat must never leave it
-        // parked in the centre from the previous round.
         List<Vec3d> freeStarts = new ArrayList<>(startPositions);
         Collections.shuffle(freeStarts);
         int index = 0;
@@ -1589,82 +1618,53 @@ public final class IceRushGame {
                 break;
             }
             Vec3d pos = freeStarts.get(index++);
-            BoatEntity boat = playerBoats.get(participant.id);
-            if (player.hasVehicle()) player.stopRiding();
-            if (boat == null || boat.isRemoved()) {
-                boat = new BoatEntity(EntityType.BOAT, arenaWorld);
-                boat.setPosition(pos.x, pos.y, pos.z);
-                boat.setYaw(player.getYaw());
-                boat.setVelocity(Vec3d.ZERO);
-                playerBoats.put(participant.id, boat);
-                // Spawn only after the final position and rotation are assigned.
-                arenaWorld.spawnEntity(boat);
-            } else {
-                boat.setPosition(pos.x, pos.y, pos.z);
-                boat.setYaw(player.getYaw());
-                boat.setVelocity(Vec3d.ZERO);
-            }
-            participant.appliedSpeedScale = 1.0;
-            participant.turboTicks = 0;
-            participant.turboActive = false;
+            placeAndMountRoundBoat(player, participant, pos, playerBoats.get(participant.id));
+        }
+    }
 
-            player.teleport(arenaWorld, pos.x, pos.y + 0.35, pos.z, player.getYaw(), 0.0F);
-            boolean mounted = player.startRiding(boat, true);
-            if (!mounted) {
-                player.teleport(arenaWorld, pos.x, pos.y + 0.8, pos.z, player.getYaw(), 0.0F);
-                mounted = player.startRiding(boat, true);
+    private void spawnMissingRoundBoats(MinecraftServer server) {
+        if (arenaWorld == null || startPositions.isEmpty()) return;
+        // Every round starts on the driving ring, never in the previous parking spot.
+        List<Vec3d> freeStarts = new ArrayList<>(startPositions);
+        Collections.shuffle(freeStarts);
+        int index = 0;
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player == null) continue;
+            if (index >= freeStarts.size()) {
+                IceRushMod.LOGGER.error("Not enough ICE RUSH start positions for active players");
+                break;
             }
-            if (!mounted || player.getVehicle() != boat || !boat.hasPassenger(player)) {
-                IceRushMod.LOGGER.error("ICE RUSH failed to mount {} on their round boat at start position {}",
-                    player.getGameProfile().getName(), index);
-            }
+            Vec3d pos = freeStarts.get(index++);
+            placeAndMountRoundBoat(player, participant, pos, playerBoats.get(participant.id));
         }
     }
 
     private void enforceBoatSeats(MinecraftServer server) {
-        if (arenaWorld == null) return;
+        if (arenaWorld == null || startPositions.isEmpty()) return;
         for (Participant participant : participants.values()) {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player == null) continue;
             BoatEntity boat = playerBoats.get(participant.id);
-            if (boat == null || boat.isRemoved()) {
-                // Never respawn a missing boat at the player's possibly-falling coordinates.
-                Vec3d safePosition = startPositions.get(0);
-                double nearestDistance = Double.MAX_VALUE;
-                for (Vec3d candidate : startPositions) {
-                    double dx = candidate.x - player.getX();
-                    double dz = candidate.z - player.getZ();
-                    double distance = dx * dx + dz * dz;
-                    if (distance < nearestDistance) {
-                        nearestDistance = distance;
-                        safePosition = candidate;
-                    }
-                }
-                boat = new BoatEntity(EntityType.BOAT, arenaWorld);
-                participant.appliedSpeedScale = 1.0;
-                participant.turboTicks = 0;
-                participant.turboActive = false;
-                boat.setPosition(safePosition);
-                arenaWorld.spawnEntity(boat);
-                playerBoats.put(participant.id, boat);
-                player.teleport(arenaWorld, safePosition.x, safePosition.y + 0.35, safePosition.z,
-                    player.getYaw(), 0.0F);
-            }
-            boolean correctlySeated = player.getVehicle() == boat && boat.hasPassenger(player);
-            if (!correctlySeated) {
-                if (player.hasVehicle()) player.stopRiding();
-                boolean mounted = player.startRiding(boat, true);
-                if (!mounted) {
-                    player.teleport(arenaWorld, boat.getX(), boat.getY() + 0.35, boat.getZ(),
-                        boat.getYaw(), 0.0F);
-                    mounted = player.startRiding(boat, true);
-                }
-                if (!mounted || player.getVehicle() != boat || !boat.hasPassenger(player)) {
-                    IceRushMod.LOGGER.warn("Could not seat ICE RUSH player {} in assigned boat {}",
-                        player.getGameProfile().getName(), boat.getUuid());
+            boolean correctlySeated = boat != null && !boat.isRemoved()
+                && player.getVehicle() == boat && boat.hasPassenger(player);
+            if (correctlySeated) continue;
+
+            // Never respawn a missing boat at the player's possibly-falling coordinates.
+            Vec3d safePosition = startPositions.get(0);
+            double nearestDistance = Double.MAX_VALUE;
+            for (Vec3d candidate : startPositions) {
+                double dx = candidate.x - player.getX();
+                double dz = candidate.z - player.getZ();
+                double distance = dx * dx + dz * dz;
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    safePosition = candidate;
                 }
             }
+            placeAndMountRoundBoat(player, participant, safePosition, boat);
         }
     }
 
