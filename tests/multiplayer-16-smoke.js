@@ -100,9 +100,12 @@ async function main() {
       if (i === 1) {
         // This server starts with a saved legacy arena at lobby height 80.
         // onServerStarted must migrate it to 16 blocks and rebuild its geometry.
-        await new Promise(resolve => setTimeout(resolve, 500));
         arenaCenter = { x: 0, y: 80, z: 0 };
         lobbyPositionY = 96;
+        for (let attempt = 0; attempt < 50; attempt++) {
+          if (Math.abs(bot.entity.position.y - lobbyPositionY) <= 3) break;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
         if (Math.abs(bot.entity.position.y - lobbyPositionY) > 3) {
           throw new Error('Saved arena did not teleport the first player to the migrated lobby; y=' + bot.entity.position.y);
         }
