@@ -1061,7 +1061,7 @@ public final class IceRushGame {
                     participant.parkingTimeTicks = Math.max(1, config.parkingSeconds * 20 - timer);
                     occupiedSpots.add(i);
                     player.sendMessage(Text.literal("Parkovacie miesto obsadené!").formatted(Formatting.GREEN), true);
-                    player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.PLAYERS, 0.8F, 1.65F);
+                    player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), SoundCategory.PLAYERS, 0.8F, 1.65F);
                     break;
                 }
             }
@@ -1358,7 +1358,7 @@ public final class IceRushGame {
             if (participant.eliminated) continue;
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player != null && player.getVehicle() == playerBoats.get(participant.id)) {
-                player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MUSIC, 0.10F, pitch);
+                player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.MUSIC, 0.10F, pitch);
             }
         }
     }
@@ -1543,7 +1543,7 @@ public final class IceRushGame {
                 participant.points += config.turboBonusPoints;
                 arenaWorld.spawnParticles(ParticleTypes.FIREWORK, boat.getX(), boat.getY() + 0.5, boat.getZ(), 18, 0.5, 0.3, 0.5, 0.08);
                 arenaWorld.playSound(null, boat.getBlockPos(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 1.0F, 1.4F);
-                player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_BELL, SoundCategory.PLAYERS, 0.8F, 1.8F);
+                player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), SoundCategory.PLAYERS, 0.8F, 1.8F);
                 player.sendMessage(Text.literal("TURBO! +" + config.turboBonusPoints + " body").formatted(Formatting.GREEN, Formatting.BOLD), true);
                 break;
             }
@@ -1764,7 +1764,7 @@ public final class IceRushGame {
                     arenaWorld.spawnParticles(ParticleTypes.FIREWORK, player.getX(), player.getY() + 1.0, player.getZ(), 100, 1.2, 1.0, 1.2, 0.12);
                     arenaWorld.spawnParticles(ParticleTypes.HAPPY_VILLAGER, player.getX(), player.getY() + 1.0, player.getZ(), 60, 1.0, 1.0, 1.0, 0.1);
                     player.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 1.0F, 0.85F);
-                    player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MUSIC, 0.8F, 1.6F);
+                    player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.MUSIC, 0.8F, 1.6F);
                 }
                 player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší. +100 bodov. Spolu: " + (winnerParticipant == null ? 100 : winnerParticipant.points)).formatted(Formatting.GREEN, Formatting.BOLD), false);
             }
