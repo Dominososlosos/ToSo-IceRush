@@ -98,19 +98,14 @@ async function main() {
       bots.set(name, bot);
       await spawned(bot, name);
       if (i === 1) {
-        arenaCenter = {
-          x: Math.floor(bot.entity.position.x),
-          y: Math.floor(bot.entity.position.y),
-          z: Math.floor(bot.entity.position.z)
-        };
-        bot.chat('/icerush setup');
-        await waitFor(bot, /ICE RUSH aréna vytvorená/);
+        // This server starts with a saved legacy arena at lobby height 80.
+        // onServerStarted must migrate it to 16 blocks and rebuild its geometry.
         await new Promise(resolve => setTimeout(resolve, 500));
-        // Setup teleports the admin to the lobby directly above the exact arena centre.
-        arenaCenter.x = Math.floor(bot.entity.position.x);
-        arenaCenter.z = Math.floor(bot.entity.position.z);
-        lobbyPositionY = bot.entity.position.y;
-        arenaCenter.y = Math.floor(bot.entity.position.y) - 16;
+        arenaCenter = { x: 0, y: 80, z: 0 };
+        lobbyPositionY = 96;
+        if (Math.abs(bot.entity.position.y - lobbyPositionY) > 3) {
+          throw new Error('Saved arena did not teleport the first player to the migrated lobby; y=' + bot.entity.position.y);
+        }
         const lobbyFloor = bot.blockAt(new Vec3(arenaCenter.x, arenaCenter.y + 15, arenaCenter.z));
         if (!lobbyFloor || lobbyFloor.name !== 'light_blue_stained_glass') {
           throw new Error('Lobby platform floor was not generated at the expected height; found ' + (lobbyFloor && lobbyFloor.name));
