@@ -378,7 +378,7 @@ public final class IceRushGame {
         int cz = arenaCenter.getZ();
         for (int dx = -10; dx <= 10; dx++) {
             for (int dz = -10; dz <= 10; dz++) {
-                for (int dy = 1; dy <= 12; dy++) {
+                for (int dy = 0; dy <= 12; dy++) {
                     arenaWorld.setBlockState(new BlockPos(cx + dx, lobbyFloorY + dy, cz + dz),
                         Blocks.AIR.getDefaultState(), 3);
                 }
