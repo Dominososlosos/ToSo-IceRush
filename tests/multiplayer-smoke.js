@@ -67,10 +67,14 @@ async function main() {
 
     admin.chat('/icerush setup');
     await waitFor(admin, /ICE RUSH aréna vytvorená/);
-    // The admin is now at the lobby, exactly 16 blocks above the arena centre.
-    center.x = Math.floor(admin.entity.position.x);
-    center.z = Math.floor(admin.entity.position.z);
-    center.y = Math.floor(admin.entity.position.y) - 16;
+    // The arena center is the admin's original block position; wait for the lobby teleport.
+    for (let attempt = 0; attempt < 50; attempt++) {
+      if (Math.abs(admin.entity.position.y - (center.y + 16)) < 2) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    if (Math.abs(admin.entity.position.y - (center.y + 16)) >= 2) {
+      throw new Error('Admin was not teleported to the 16-block lobby; y=' + admin.entity.position.y);
+    }
     const lobbyFloor = admin.blockAt(new Vec3(center.x, center.y + 15, center.z));
     if (!lobbyFloor || lobbyFloor.name !== 'light_blue_stained_glass') {
       throw new Error('Lobby floor was not generated at the expected height; found ' + (lobbyFloor && lobbyFloor.name));
