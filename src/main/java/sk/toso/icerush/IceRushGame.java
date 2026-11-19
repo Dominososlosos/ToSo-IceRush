@@ -291,6 +291,7 @@ public final class IceRushGame {
             teleportToLobby(player);
             sendLobbyMenu(player);
         }
+        updateLobbyLeaderboard(source.getServer());
         admin.sendMessage(Text.literal("ICE RUSH aréna vytvorená. Priemer: " + (config.trackOuterRadius * 2.0) + " blokov, šírka približne " + (config.trackOuterRadius - config.trackInnerRadius) + "; lobby: " + config.lobbyHeight + " blokov nad dráhou.").formatted(Formatting.GREEN), false);
         tryStartCountdown(source.getServer());
         return 1;
@@ -331,6 +332,7 @@ public final class IceRushGame {
         clearLobbyVolume(config.arenaY - 1 + safeHeight);
         initializeArenaPositions();
         buildLobbyControls();
+        updateLobbyLeaderboard(server);
         config.save();
         IceRushMod.LOGGER.info("Restored and repaired ICE RUSH arena at {} {} {} in {} (lobby height {})",
             config.arenaX, config.arenaY, config.arenaZ, config.arenaDimension, safeHeight);
@@ -781,6 +783,7 @@ public final class IceRushGame {
             if (arenaWorld != null && lobbyPosition != null) {
                 player.interactionManager.changeGameMode(GameMode.ADVENTURE);
                 teleportToLobby(player);
+                updateLobbyLeaderboard(player.getServer());
             }
             sendLobbyMenu(player);
             return;
