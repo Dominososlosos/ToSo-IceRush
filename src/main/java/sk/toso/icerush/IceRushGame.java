@@ -1178,7 +1178,7 @@ public final class IceRushGame {
             );
         }
         scoreboard.setObjectiveSlot(net.minecraft.scoreboard.Scoreboard.getDisplaySlotId("sidebar"), objective);
-        // Remove the legacy sixth line (round + timer) from scoreboards saved by older versions.
+        // Clear the legacy combined round/timer entry before rebuilding the timer-free sidebar.
         String legacyTimerHolder = String.valueOf((char) 0x2062);
         scoreboard.resetPlayerScore(legacyTimerHolder, objective);
         if (scoreboard.getPlayerTeam(legacyTimerHolder) != null) {
@@ -1198,6 +1198,7 @@ public final class IceRushGame {
         String[] lines = {
             "TOSO • ICE RUSH",
             "Fáza: " + phase,
+            "Kolo: " + (state == State.WAITING ? "—" : round),
             "Hráči: " + playerLabel,
             "READY: " + readyLabel,
             "Parkoviská: " + (state == State.PARKING ? Math.max(0, activeCount() - 1) : "—")
@@ -1206,7 +1207,7 @@ public final class IceRushGame {
         // Invisible unique holders keep the sidebar safe for accents, spaces and formatting.
         String[] holders = {String.valueOf((char) 0x200B), String.valueOf((char) 0x200C),
             String.valueOf((char) 0x200D), String.valueOf((char) 0x2060),
-            String.valueOf((char) 0x2061)};
+            String.valueOf((char) 0x2061), String.valueOf((char) 0x2062)};
         for (int i = 0; i < lines.length; i++) {
             String teamName = "icerush_line_" + (i + 1);
             var team = scoreboard.getTeam(teamName);
@@ -1222,8 +1223,9 @@ public final class IceRushGame {
             Formatting lineColor = switch (i) {
                 case 0 -> Formatting.AQUA;
                 case 1 -> Formatting.YELLOW;
-                case 2 -> Formatting.WHITE;
-                case 3 -> Formatting.GREEN;
+                case 2 -> Formatting.GOLD;
+                case 3 -> Formatting.WHITE;
+                case 4 -> Formatting.GREEN;
                 default -> Formatting.BLUE;
             };
             var prefix = Text.literal(lines[i]).formatted(lineColor);
