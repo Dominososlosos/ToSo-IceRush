@@ -207,7 +207,16 @@ jobs:
             "minRideSeconds": 15,
             "maxRideSeconds": 15,
             "parkingSeconds": 60,
-            "finishHoldSeconds": 5
+            "finishHoldSeconds": 5,
+            "arenaConfigured": true,
+            "arenaDimension": "minecraft:overworld",
+            "arenaX": 0,
+            "arenaY": 80,
+            "arenaZ": 0,
+            "arenaInnerRadius": 38.0,
+            "arenaOuterRadius": 45.0,
+            "arenaLobbyHeight": 80,
+            "lobbyHeight": 80
           }
           EOF
           node - <<'NODE'
@@ -243,6 +252,7 @@ jobs:
           sleep 2
           cd ..
           node tests/multiplayer-16-smoke.js
+          grep -q '"arenaLobbyHeight": 16' server/config/icerush.json
           grep -q 'ICE RUSH initialized' server/logs/latest.log
           if grep -q 'Expected whitespace to end one argument' server/logs/latest.log; then echo 'Scoreboard command parsing failed'; cat server/logs/latest.log; exit 1; fi
           test -f server/config/multiplayer-16-test-result.txt
