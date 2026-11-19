@@ -313,12 +313,13 @@ public final class IceRushGame {
         arenaWorld = savedWorld;
         arenaCenter = new BlockPos(config.arenaX, config.arenaY, config.arenaZ);
         int oldLobbyHeight = config.arenaLobbyHeight;
-        if (config.arenaLobbyHeight > 32) {
-            config.arenaLobbyHeight = Math.min(16, calculateSafeLobbyHeight(arenaWorld, config.arenaY - 1, 16));
-            config.lobbyHeight = config.arenaLobbyHeight;
+        int desiredLobbyHeight = Math.max(8, Math.min(16, oldLobbyHeight));
+        if (oldLobbyHeight != desiredLobbyHeight) {
+            config.arenaLobbyHeight = desiredLobbyHeight;
+            config.lobbyHeight = desiredLobbyHeight;
             clearLobbyVolume(config.arenaY - 1 + oldLobbyHeight);
             config.save();
-            IceRushMod.LOGGER.warn("Migrated legacy ICE RUSH lobby height from {} to {} blocks", oldLobbyHeight, config.arenaLobbyHeight);
+            IceRushMod.LOGGER.warn("Migrated legacy ICE RUSH lobby height from {} to {} blocks", oldLobbyHeight, desiredLobbyHeight);
         }
         int safeHeight = calculateSafeLobbyHeight(arenaWorld, config.arenaY - 1, config.arenaLobbyHeight);
         if (safeHeight < 8) {
