@@ -119,6 +119,17 @@ async function main() {
         if (!trackFloor || trackFloor.name !== 'blue_ice') {
           throw new Error('Flat Blue Ice track was not generated; found ' + (trackFloor && trackFloor.name));
         }
+        for (let i = 0; i < 8; i++) {
+          const angle = Math.PI * 2 * i / 8;
+          const sample = bot.blockAt(new Vec3(
+            Math.floor(arenaCenter.x + Math.cos(angle) * 41),
+            arenaCenter.y - 1,
+            Math.floor(arenaCenter.z + Math.sin(angle) * 41)
+          ));
+          if (!sample || sample.name !== 'blue_ice') {
+            throw new Error('Arena track contains a non-flat or incorrect block at sample ' + i + ': ' + (sample && sample.name));
+          }
+        }
         const centerFloor = bot.blockAt(new Vec3(arenaCenter.x, arenaCenter.y - 1, arenaCenter.z));
         if (!centerFloor || centerFloor.name !== 'air') {
           throw new Error('Arena center must be open while waiting; found ' + (centerFloor && centerFloor.name));
