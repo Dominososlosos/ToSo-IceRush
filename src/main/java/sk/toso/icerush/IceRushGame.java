@@ -886,6 +886,7 @@ public final class IceRushGame {
             enforceBoatSeats(server);
             roundTicks++;
             updateSpeedBars(server);
+            tickRaceMusic(server);
             tickTurbo(server);
             tickCracks(server);
             applyRoundEvent(server);
@@ -898,7 +899,8 @@ public final class IceRushGame {
             return;
         }
         if (state == State.PARKING) {
-            phaseBar.setPercent(Math.max(0.0F, Math.min(1.0F, timer / (float) (config.parkingSeconds * 20))));
+            // Keep the parking duration hidden; no shrinking bar reveals the deadline.
+            phaseBar.setPercent(1.0F);
             if (server.getTicks() % 20 == 0) updateHud(server);
             enforceBoatSeats(server);
             int requiredPadsNow = Math.max(0, activeCount() - 1);
@@ -952,19 +954,20 @@ public final class IceRushGame {
         timer = ThreadLocalRandom.current().nextInt(config.minRideSeconds * 20, config.maxRideSeconds * 20 + 1);
         spawnMissingRoundBoats(server);
         setupSpeedBars(server);
-        phaseBar.setName(Text.literal("JAZDA — KOLO " + round));
+        phaseBar.setName(Text.literal("JAZDA"));
         phaseBar.setColor(BossBar.Color.BLUE);
         phaseBar.setPercent(1.0F);
         addPhaseBarPlayers(server);
         roundTicks = 0;
         prepareRoundModifiers(server);
-        broadcast(server, Text.literal("ŠTART! Kolo " + round + " — jazda!").formatted(Formatting.GREEN, Formatting.BOLD));
-        broadcastTitle(server, "ŠTART!", "KOLO " + round, 30);
+        broadcast(server, Text.literal("ŠTART!").formatted(Formatting.GREEN, Formatting.BOLD));
+        broadcastTitle(server, "ŠTART!", "ICE RUSH", 30);
+        playSoundToActivePlayers(server, SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 0.55F, 1.35F);
     }
 
     private void beginParking(MinecraftServer server) {
         clearSpeedBars();
-        phaseBar.setName(Text.literal("PARKOVANIE — " + config.parkingSeconds + " SEKÚND"));
+        phaseBar.setName(Text.literal("PARKOVANIE"));
         phaseBar.setColor(BossBar.Color.YELLOW);
         phaseBar.setPercent(1.0F);
         Collections.shuffle(parkingSpots);
@@ -973,7 +976,7 @@ public final class IceRushGame {
         timer = config.parkingSeconds * 20;
         occupiedSpots.clear();
         for (Participant p : participants.values()) { p.parked = false; p.parkingRewarded = false; p.parkingSpot = -1; }
-        broadcast(server, Text.literal("PARKOVANIE! Máš " + config.parkingSeconds + " sekúnd na obsadenie miesta.").formatted(Formatting.GOLD, Formatting.BOLD));
+        broadcast(server, Text.literal("PARKOVANIE! Nájdeš si voľné miesto skôr než ostatní?").formatted(Formatting.GOLD, Formatting.BOLD));
     }
 
     private void showParkingPads() {
@@ -1058,6 +1061,7 @@ public final class IceRushGame {
                     participant.parkingTimeTicks = Math.max(1, config.parkingSeconds * 20 - timer);
                     occupiedSpots.add(i);
                     player.sendMessage(Text.literal("Parkovacie miesto obsadené!").formatted(Formatting.GREEN), true);
+                    player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.PLAYERS, 0.8F, 1.65F);
                     break;
                 }
             }
@@ -1123,6 +1127,7 @@ public final class IceRushGame {
                         arenaWorld.spawnParticles(ParticleTypes.CLOUD, player.getX(), player.getY() + 0.5, player.getZ(), 24, 0.5, 0.4, 0.5, 0.03);
                         arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0F, 0.7F);
                     }
+                    player.playSound(SoundEvents.ENTITY_IRON_GOLEM_HURT, SoundCategory.PLAYERS, 0.65F, 0.75F);
                     sendTitle(player, "VYPADÁVAŠ!", "Nenašiel si parkovacie miesto.");
                     player.interactionManager.changeGameMode(GameMode.SPECTATOR);
                     player.sendMessage(Text.literal("VYPADÁVAŠ! Nenašiel/nenašla si parkovacie miesto. Body: " + participant.points).formatted(Formatting.RED, Formatting.BOLD), false);
@@ -1181,23 +1186,20 @@ public final class IceRushGame {
             case PARKING -> "PARKOVANIE";
             case FINISHED -> "VÝSLEDOK";
         };
-        String timeLabel = state == State.WAITING ? "Čaká sa na hráčov" : String.format(java.util.Locale.ROOT, "%d:%02d",
-            Math.max(0, timer) / 1200, (Math.max(0, timer) / 20) % 60);
         String playerLabel = state == State.WAITING ? participants.size() + "/" + config.maxPlayers : activeCount() + " aktívnych";
         String readyLabel = state == State.WAITING ? readyCount + "/" + participants.size() : "—";
         String[] lines = {
             "TOSO • ICE RUSH",
-            "Stav: " + phase,
+            "Fáza: " + phase,
             "Hráči: " + playerLabel,
             "READY: " + readyLabel,
-            "Kolo: " + round + " | Čas: " + timeLabel,
             "Parkoviská: " + (state == State.PARKING ? Math.max(0, activeCount() - 1) : "—")
         };
 
         // Invisible unique holders keep the sidebar safe for accents, spaces and formatting.
         String[] holders = {String.valueOf((char) 0x200B), String.valueOf((char) 0x200C),
             String.valueOf((char) 0x200D), String.valueOf((char) 0x2060),
-            String.valueOf((char) 0x2061), String.valueOf((char) 0x2062)};
+            String.valueOf((char) 0x2061)};
         for (int i = 0; i < lines.length; i++) {
             String teamName = "icerush_line_" + (i + 1);
             var team = scoreboard.getTeam(teamName);
@@ -1215,7 +1217,6 @@ public final class IceRushGame {
                 case 1 -> Formatting.YELLOW;
                 case 2 -> Formatting.WHITE;
                 case 3 -> Formatting.GREEN;
-                case 4 -> Formatting.GOLD;
                 default -> Formatting.BLUE;
             };
             var prefix = Text.literal(lines[i]).formatted(lineColor);
@@ -1314,7 +1315,7 @@ public final class IceRushGame {
 
     private void updateHud(MinecraftServer server) {
         String phase = state == State.PARKING ? "PARKOVANIE" : "JAZDA";
-        Text hud = Text.literal("ICE RUSH  |  Hráči: " + activeCount() + "  |  Kolo: " + round + "  |  " + phase);
+        Text hud = Text.literal("ICE RUSH  |  Hráči: " + activeCount() + "  |  " + phase);
         for (Participant participant : participants.values()) {
             ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
             if (player != null && !participant.eliminated) player.sendMessage(hud, true);
@@ -1341,6 +1342,34 @@ public final class IceRushGame {
     private void clearSpeedBars() {
         for (ServerBossBar bar : speedBars.values()) bar.clearPlayers();
         speedBars.clear();
+    }
+
+    /**
+     * Quiet, original 16-note ambient motif built from vanilla chime sounds.
+     * It is sent directly to each active competitor; no external resource pack
+     * or client-side mod is required.
+     */
+    private void tickRaceMusic(MinecraftServer server) {
+        if (roundTicks % 12 != 0) return;
+        float[] notes = {0.75F, 0.89F, 1.12F, 0.89F, 1.0F, 1.33F, 1.12F, 0.89F,
+            0.67F, 0.89F, 1.0F, 1.19F, 1.0F, 0.89F, 0.75F, 0.67F};
+        float pitch = notes[(roundTicks / 12) % notes.length];
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player != null && player.getVehicle() == playerBoats.get(participant.id)) {
+                player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MUSIC, 0.10F, pitch);
+            }
+        }
+    }
+
+    private void playSoundToActivePlayers(MinecraftServer server, net.minecraft.sound.SoundEvent sound,
+                                          SoundCategory category, float volume, float pitch) {
+        for (Participant participant : participants.values()) {
+            if (participant.eliminated) continue;
+            ServerPlayerEntity player = server.getPlayerManager().getPlayer(participant.id);
+            if (player != null) player.playSound(sound, category, volume, pitch);
+        }
     }
 
     private void updateSpeedBars(MinecraftServer server) {
@@ -1514,6 +1543,7 @@ public final class IceRushGame {
                 participant.points += config.turboBonusPoints;
                 arenaWorld.spawnParticles(ParticleTypes.FIREWORK, boat.getX(), boat.getY() + 0.5, boat.getZ(), 18, 0.5, 0.3, 0.5, 0.08);
                 arenaWorld.playSound(null, boat.getBlockPos(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 1.0F, 1.4F);
+                player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_BELL, SoundCategory.PLAYERS, 0.8F, 1.8F);
                 player.sendMessage(Text.literal("TURBO! +" + config.turboBonusPoints + " body").formatted(Formatting.GREEN, Formatting.BOLD), true);
                 break;
             }
@@ -1733,8 +1763,8 @@ public final class IceRushGame {
                 if (arenaWorld != null) {
                     arenaWorld.spawnParticles(ParticleTypes.FIREWORK, player.getX(), player.getY() + 1.0, player.getZ(), 100, 1.2, 1.0, 1.2, 0.12);
                     arenaWorld.spawnParticles(ParticleTypes.HAPPY_VILLAGER, player.getX(), player.getY() + 1.0, player.getZ(), 60, 1.0, 1.0, 1.0, 0.1);
-                    arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.MUSIC_DISC_OTHERSIDE, SoundCategory.RECORDS, 1.0F, 1.0F);
-                    arenaWorld.playSound(null, player.getBlockPos(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 1.2F, 0.8F);
+                    player.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 1.0F, 0.85F);
+                    player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MUSIC, 0.8F, 1.6F);
                 }
                 player.sendMessage(Text.literal("Gratulujeme! Si posledný preživší. +100 bodov. Spolu: " + (winnerParticipant == null ? 100 : winnerParticipant.points)).formatted(Formatting.GREEN, Formatting.BOLD), false);
             }
