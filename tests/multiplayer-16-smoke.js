@@ -98,19 +98,41 @@ async function main() {
       bots.set(name, bot);
       await spawned(bot, name);
       if (i === 1) {
-        arenaCenter = {
-          x: Math.floor(bot.entity.position.x),
-          y: Math.floor(bot.entity.position.y),
-          z: Math.floor(bot.entity.position.z)
-        };
-        bot.chat('/icerush setup');
-        await waitFor(bot, /ICE RUSH aréna vytvorená/);
+        // This server starts with a saved legacy arena at lobby height 80.
+        // onServerStarted must migrate it to 16 blocks and rebuild its geometry.
+        arenaCenter = { x: 0, y: 80, z: 0 };
+        lobbyPositionY = 96;
+        for (let attempt = 0; attempt < 50; attempt++) {
+          if (Math.abs(bot.entity.position.y - lobbyPositionY) <= 3) break;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        if (Math.abs(bot.entity.position.y - lobbyPositionY) > 3) {
+          throw new Error('Saved arena did not teleport the first player to the migrated lobby; y=' + bot.entity.position.y);
+        }
         await new Promise(resolve => setTimeout(resolve, 500));
-        // Setup teleports the admin to the lobby directly above the exact arena centre.
-        arenaCenter.x = Math.floor(bot.entity.position.x);
-        arenaCenter.z = Math.floor(bot.entity.position.z);
-        lobbyPositionY = bot.entity.position.y;
-        arenaCenter.y = Math.floor(bot.entity.position.y) - 80;
+        const lobbyFloor = bot.blockAt(new Vec3(arenaCenter.x, arenaCenter.y + 15, arenaCenter.z));
+        if (!lobbyFloor || lobbyFloor.name !== 'light_blue_stained_glass') {
+          throw new Error('Lobby platform floor was not generated at the expected height; found ' + (lobbyFloor && lobbyFloor.name));
+        }
+        const trackFloor = bot.blockAt(new Vec3(arenaCenter.x + 41, arenaCenter.y - 1, arenaCenter.z));
+        if (!trackFloor || trackFloor.name !== 'blue_ice') {
+          throw new Error('Flat Blue Ice track was not generated; found ' + (trackFloor && trackFloor.name));
+        }
+        for (let i = 0; i < 8; i++) {
+          const angle = Math.PI * 2 * i / 8;
+          const sample = bot.blockAt(new Vec3(
+            Math.floor(arenaCenter.x + Math.cos(angle) * 41),
+            arenaCenter.y - 1,
+            Math.floor(arenaCenter.z + Math.sin(angle) * 41)
+          ));
+          if (!sample || sample.name !== 'blue_ice') {
+            throw new Error('Arena track contains a non-flat or incorrect block at sample ' + i + ': ' + (sample && sample.name));
+          }
+        }
+        const centerFloor = bot.blockAt(new Vec3(arenaCenter.x, arenaCenter.y - 1, arenaCenter.z));
+        if (!centerFloor || centerFloor.name !== 'air') {
+          throw new Error('Arena center must be open while waiting; found ' + (centerFloor && centerFloor.name));
+        }
         const npcXOffsets = [-6.5, -3.7, -0.9, 1.9, 4.7, 7.5];
         const characters = Object.values(bot.entities).filter(entity =>
           entity.name === 'armor_stand'

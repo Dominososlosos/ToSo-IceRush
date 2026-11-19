@@ -19,7 +19,7 @@ final class IceRushConfig {
     int maxRideSeconds = 40;
     int parkingSeconds = 20;
     int finishHoldSeconds = 8;
-    int lobbyHeight = 80;
+    int lobbyHeight = 16;
     double trackInnerRadius = 38.0;
     double trackOuterRadius = 45.0;
     int turboZones = 6;
@@ -39,7 +39,7 @@ final class IceRushConfig {
     int arenaZ;
     double arenaInnerRadius = 38.0;
     double arenaOuterRadius = 45.0;
-    int arenaLobbyHeight = 80;
+    int arenaLobbyHeight = 16;
     boolean parkingSpotsCustomized = false;
     List<double[]> customParkingSpots = new ArrayList<>();
 
@@ -107,7 +107,7 @@ final class IceRushConfig {
         maxRideSeconds = clamp(maxRideSeconds, minRideSeconds, 600);
         parkingSeconds = clamp(parkingSeconds, 5, 120);
         finishHoldSeconds = clamp(finishHoldSeconds, 1, 60);
-        lobbyHeight = clamp(lobbyHeight, 20, 200);
+        lobbyHeight = clamp(lobbyHeight, 8, 16);
         trackInnerRadius = Math.max(5.0, Math.min(trackInnerRadius, 100.0));
         trackOuterRadius = Math.max(trackInnerRadius + 1.0, Math.min(trackOuterRadius, 120.0));
         turboZones = clamp(turboZones, 0, 32);

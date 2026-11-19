@@ -262,41 +262,19 @@ public final class IceRushGame {
         int cx = arenaCenter.getX();
         int cy = arenaCenter.getY() - 1;
         int cz = arenaCenter.getZ();
-        // Jednorazová kruhová dráha: vonkajší priemer 90 blokov, šírka 7 blokov.
-        for (int x = -((int) Math.ceil(config.trackOuterRadius + 5)); x <= (int) Math.ceil(config.trackOuterRadius + 5); x++) {
-            for (int z = -((int) Math.ceil(config.trackOuterRadius + 5)); z <= (int) Math.ceil(config.trackOuterRadius + 5); z++) {
-                double radius = Math.sqrt((double) x * x + (double) z * z);
-                if (radius > config.trackOuterRadius + 5) continue;
-                for (int y = cy + 1; y <= cy + 6; y++) {
-                    arenaWorld.setBlockState(new BlockPos(cx + x, y, cz + z), Blocks.AIR.getDefaultState());
-                }
-                // Blue-ice driving ring; the center is open except during parking.
-                BlockPos floor = new BlockPos(cx + x, cy, cz + z);
-                // The inner disk stays empty outside the parking phase.
-                arenaWorld.setBlockState(floor, radius < config.trackInnerRadius
-                    ? Blocks.AIR.getDefaultState()
-                    : radius > config.trackOuterRadius
-                        ? Blocks.PACKED_ICE.getDefaultState()
-                        : Blocks.BLUE_ICE.getDefaultState());
-            }
+        int safeLobbyHeight = calculateSafeLobbyHeight(arenaWorld, cy, config.lobbyHeight);
+        if (safeLobbyHeight < 8) {
+            arenaWorld = null;
+            arenaCenter = null;
+            source.sendError(Text.literal("Na tomto mieste nie je dosť priestoru nad arénou. Vyber nižšie položené miesto a spusti /icerush setup znova."));
+            return 0;
         }
-        // Vyvýšená lobby plošina 80 blokov nad úrovňou dráhy.
-        int lobbyY = cy + config.lobbyHeight;
+        config.lobbyHeight = safeLobbyHeight;
+        config.arenaLobbyHeight = safeLobbyHeight;
+        rebuildArenaSurface();
+        int lobbyY = cy + safeLobbyHeight;
+        clearLobbyVolume(lobbyY);
         lobbyPosition = new Vec3d(cx + 0.5, lobbyY + 1.0, cz + 0.5);
-        for (int x = -8; x <= 8; x++) {
-            for (int z = -8; z <= 8; z++) {
-                BlockState lobbyFloor = Math.abs(x) <= 5 && Math.abs(z) <= 5
-                    ? Blocks.GLASS.getDefaultState() : Blocks.SPRUCE_PLANKS.getDefaultState();
-                arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY, cz + z), lobbyFloor);
-                if (Math.abs(x) == 8 || Math.abs(z) == 8) {
-                    arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 1, cz + z), Blocks.SPRUCE_FENCE.getDefaultState());
-                }
-                if (Math.abs(x) == 7 && Math.abs(z) == 7) {
-                    arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 1, cz + z), Blocks.SEA_LANTERN.getDefaultState());
-                    arenaWorld.setBlockState(new BlockPos(cx + x, lobbyY + 2, cz + z), Blocks.BLUE_ICE.getDefaultState());
-                }
-            }
-        }
         config.arenaInnerRadius = config.trackInnerRadius;
         config.arenaOuterRadius = config.trackOuterRadius;
         config.arenaLobbyHeight = config.lobbyHeight;
@@ -313,6 +291,7 @@ public final class IceRushGame {
             teleportToLobby(player);
             sendLobbyMenu(player);
         }
+        updateLobbyLeaderboard(source.getServer());
         admin.sendMessage(Text.literal("ICE RUSH aréna vytvorená. Priemer: " + (config.trackOuterRadius * 2.0) + " blokov, šírka približne " + (config.trackOuterRadius - config.trackInnerRadius) + "; lobby: " + config.lobbyHeight + " blokov nad dráhou.").formatted(Formatting.GREEN), false);
         tryStartCountdown(source.getServer());
         return 1;
@@ -333,10 +312,86 @@ public final class IceRushGame {
         }
         arenaWorld = savedWorld;
         arenaCenter = new BlockPos(config.arenaX, config.arenaY, config.arenaZ);
-        lobbyPosition = new Vec3d(config.arenaX + 0.5, config.arenaY + config.arenaLobbyHeight, config.arenaZ + 0.5);
+        int oldLobbyHeight = config.arenaLobbyHeight;
+        int desiredLobbyHeight = Math.max(8, Math.min(16, oldLobbyHeight));
+        if (oldLobbyHeight != desiredLobbyHeight) {
+            config.arenaLobbyHeight = desiredLobbyHeight;
+            config.lobbyHeight = desiredLobbyHeight;
+            clearLobbyVolume(config.arenaY - 1 + oldLobbyHeight);
+            config.save();
+            IceRushMod.LOGGER.warn("Migrated legacy ICE RUSH lobby height from {} to {} blocks", oldLobbyHeight, desiredLobbyHeight);
+        }
+        int safeHeight = calculateSafeLobbyHeight(arenaWorld, config.arenaY - 1, config.arenaLobbyHeight);
+        if (safeHeight < 8) {
+            IceRushMod.LOGGER.error("Saved ICE RUSH arena is too close to the world ceiling; lobby cannot be restored safely");
+            return;
+        }
+        config.arenaLobbyHeight = safeHeight;
+        config.lobbyHeight = safeHeight;
+        lobbyPosition = new Vec3d(config.arenaX + 0.5, config.arenaY + safeHeight, config.arenaZ + 0.5);
+        rebuildArenaSurface();
+        clearLobbyVolume(config.arenaY - 1 + safeHeight);
         initializeArenaPositions();
         buildLobbyControls();
-        IceRushMod.LOGGER.info("Restored ICE RUSH arena at {} {} {} in {}", config.arenaX, config.arenaY, config.arenaZ, config.arenaDimension);
+        updateLobbyLeaderboard(server);
+        config.save();
+        IceRushMod.LOGGER.info("Restored and repaired ICE RUSH arena at {} {} {} in {} (lobby height {})",
+            config.arenaX, config.arenaY, config.arenaZ, config.arenaDimension, safeHeight);
+    }
+
+    private int calculateSafeLobbyHeight(ServerWorld world, int trackY, int requestedHeight) {
+        int available = world.getTopY() - trackY - 12;
+        return Math.min(requestedHeight, available);
+    }
+
+    /**
+     * Rebuild the complete arena footprint from solid, flat vanilla blocks.
+     * Clearing twelve blocks above the track removes leftover stairs, eggs,
+     * plants and old parking structures from previous arena generations.
+     */
+    private void rebuildArenaSurface() {
+        if (arenaWorld == null || arenaCenter == null) return;
+        int cx = arenaCenter.getX();
+        int floorY = arenaCenter.getY() - 1;
+        int cz = arenaCenter.getZ();
+        int extent = (int) Math.ceil(arenaOuterRadius() + 5);
+        for (int dx = -extent; dx <= extent; dx++) {
+            for (int dz = -extent; dz <= extent; dz++) {
+                double radius = Math.sqrt((double) dx * dx + (double) dz * dz);
+                if (radius > arenaOuterRadius() + 5) continue;
+                for (int dy = 1; dy <= 12; dy++) {
+                    arenaWorld.setBlockState(new BlockPos(cx + dx, floorY + dy, cz + dz),
+                        Blocks.AIR.getDefaultState(), 3);
+                }
+                BlockPos floor = new BlockPos(cx + dx, floorY, cz + dz);
+                BlockState state = radius < arenaInnerRadius()
+                    ? Blocks.AIR.getDefaultState()
+                    : radius > arenaOuterRadius()
+                        ? Blocks.PACKED_ICE.getDefaultState()
+                        : Blocks.BLUE_ICE.getDefaultState();
+                arenaWorld.setBlockState(floor, state, 3);
+            }
+        }
+    }
+
+    /** Clear stale lobby blocks and ICE RUSH display entities at a specific height. */
+    private void clearLobbyVolume(int lobbyFloorY) {
+        if (arenaWorld == null || arenaCenter == null) return;
+        int cx = arenaCenter.getX();
+        int cz = arenaCenter.getZ();
+        for (int dx = -10; dx <= 10; dx++) {
+            for (int dz = -10; dz <= 10; dz++) {
+                for (int dy = 0; dy <= 12; dy++) {
+                    arenaWorld.setBlockState(new BlockPos(cx + dx, lobbyFloorY + dy, cz + dz),
+                        Blocks.AIR.getDefaultState(), 3);
+                }
+            }
+        }
+        Box oldLobby = new Box(cx - 11, lobbyFloorY - 1, cz - 11,
+            cx + 11, lobbyFloorY + 14, cz + 11);
+        List<Entity> oldDisplays = arenaWorld.getEntitiesByClass(Entity.class, oldLobby,
+            entity -> entity.getCommandTags().stream().anyMatch(tag -> tag.startsWith("icerush_")));
+        for (Entity entity : oldDisplays) entity.discard();
     }
 
     private double arenaInnerRadius() {
@@ -398,22 +453,20 @@ public final class IceRushGame {
             arenaCenter = new BlockPos(config.arenaX, config.arenaY, config.arenaZ);
             lobbyPosition = new Vec3d(config.arenaX + 0.5, config.arenaY + config.arenaLobbyHeight, config.arenaZ + 0.5);
         }
-        int cx = arenaCenter.getX(), cy = arenaCenter.getY() - 1, cz = arenaCenter.getZ();
-        for (int x = -(int)Math.ceil(arenaOuterRadius() + 5); x <= (int)Math.ceil(arenaOuterRadius() + 5); x++) {
-            for (int z = -(int)Math.ceil(arenaOuterRadius() + 5); z <= (int)Math.ceil(arenaOuterRadius() + 5); z++) {
-                double radius = Math.sqrt((double)x * x + (double)z * z);
-                if (radius > arenaOuterRadius() + 5) continue;
-                for (int y = cy + 1; y <= cy + 7; y++) {
-                    arenaWorld.setBlockState(new BlockPos(cx + x, y, cz + z), Blocks.AIR.getDefaultState());
-                }
-                arenaWorld.setBlockState(new BlockPos(cx + x, cy, cz + z),
-                    radius < arenaInnerRadius()
-                        ? Blocks.AIR.getDefaultState()
-                        : radius > arenaOuterRadius()
-                            ? Blocks.PACKED_ICE.getDefaultState()
-                            : Blocks.BLUE_ICE.getDefaultState());
-            }
+        int oldLobbyHeight = config.arenaLobbyHeight;
+        int safeHeight = calculateSafeLobbyHeight(arenaWorld, arenaCenter.getY() - 1, 16);
+        if (safeHeight < 8) {
+            source.sendError(Text.literal("Aréna je príliš blízko stropu sveta. Presuň ju nižšie a použi /icerush setup."));
+            return 0;
         }
+        if (oldLobbyHeight != safeHeight) clearLobbyVolume(arenaCenter.getY() - 1 + oldLobbyHeight);
+        config.arenaLobbyHeight = safeHeight;
+        config.lobbyHeight = safeHeight;
+        rebuildArenaSurface();
+        clearLobbyVolume(arenaCenter.getY() - 1 + safeHeight);
+        lobbyPosition = new Vec3d(arenaCenter.getX() + 0.5,
+            arenaCenter.getY() - 1 + safeHeight + 1.0, arenaCenter.getZ() + 0.5);
+        config.save();
         initializeArenaPositions();
         buildLobbyControls();
         lobbyBoardBuilt = false;
@@ -731,6 +784,7 @@ public final class IceRushGame {
             if (arenaWorld != null && lobbyPosition != null) {
                 player.interactionManager.changeGameMode(GameMode.ADVENTURE);
                 teleportToLobby(player);
+                updateLobbyLeaderboard(player.getServerWorld().getServer());
             }
             sendLobbyMenu(player);
             return;

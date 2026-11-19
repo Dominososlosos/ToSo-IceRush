@@ -67,10 +67,28 @@ async function main() {
 
     admin.chat('/icerush setup');
     await waitFor(admin, /ICE RUSH aréna vytvorená/);
-    // The admin is now at the lobby, exactly 80 blocks above the arena centre.
-    center.x = Math.floor(admin.entity.position.x);
-    center.z = Math.floor(admin.entity.position.z);
-    center.y = Math.floor(admin.entity.position.y) - 80;
+    // The arena center is the admin's original block position; wait for the lobby teleport.
+    for (let attempt = 0; attempt < 50; attempt++) {
+      if (Math.abs(admin.entity.position.y - (center.y + 16)) < 2) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    if (Math.abs(admin.entity.position.y - (center.y + 16)) >= 2) {
+      throw new Error('Admin was not teleported to the 16-block lobby; y=' + admin.entity.position.y);
+    }
+    // Wait for the client to receive the freshly generated lobby chunk section.
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const lobbyFloor = admin.blockAt(new Vec3(center.x, center.y + 15, center.z));
+    if (!lobbyFloor || lobbyFloor.name !== 'light_blue_stained_glass') {
+      throw new Error('Lobby floor was not generated at the expected height; found ' + (lobbyFloor && lobbyFloor.name));
+    }
+    const trackFloor = admin.blockAt(new Vec3(center.x + 41, center.y - 1, center.z));
+    if (!trackFloor || trackFloor.name !== 'blue_ice') {
+      throw new Error('Flat Blue Ice track was not generated; found ' + (trackFloor && trackFloor.name));
+    }
+    const centerFloor = admin.blockAt(new Vec3(center.x, center.y - 1, center.z));
+    if (!centerFloor || centerFloor.name !== 'air') {
+      throw new Error('Arena center should be open while waiting; found ' + (centerFloor && centerFloor.name));
+    }
     parking.x = center.x - 1.5;
     parking.y = center.y;
     parking.z = center.z - 1.5;
@@ -85,7 +103,7 @@ async function main() {
     if (lobbyCharacters.length !== 6) throw new Error('Expected six lobby characters, found ' + lobbyCharacters.length);
     const joinStand = lobbyCharacters.sort((a, b) => a.position.x - b.position.x)[0];
     // The NPCs are deliberately spread along the lobby edge; walk within interaction reach.
-    admin.chat(`/tp @s ${joinStand.position.x + 1.5} ${center.y + 80} ${joinStand.position.z - 1.5}`);
+    admin.chat(`/tp @s ${joinStand.position.x + 1.5} ${center.y + 16} ${joinStand.position.z - 1.5}`);
     await new Promise(resolve => setTimeout(resolve, 350));
     admin.activateEntity(joinStand);
     await waitFor(admin, /IceRushAdmin sa pripojil do ICE RUSH/);
