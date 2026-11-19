@@ -99,7 +99,7 @@ async function main() {
     admin.chat('/icerush ready');
     guest.chat('/icerush ready');
     await waitFor(admin, /ICE RUSH sa začína!/);
-    await waitFor(admin, /ŠTART! Kolo 1 — jazda!/);
+    await waitFor(admin, /ŠTART!/);
     await new Promise(resolve => setTimeout(resolve, 600));
     if (!admin.vehicle || !guest.vehicle) {
       throw new Error('A competitor is not actually mounted in a boat after the race starts');
@@ -110,11 +110,18 @@ async function main() {
     // Mineflayer does not simulate the vanilla client's local boat physics.
     // Send the real 1.20.1 paddle packet to verify it is accepted without
     // disconnecting or losing the assigned vehicle.
+    const controlledBoat = admin.vehicle;
+    const startBoatPosition = controlledBoat.position.clone();
     admin._client.write('steer_boat', { leftPaddle: true, rightPaddle: true });
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     admin._client.write('steer_boat', { leftPaddle: false, rightPaddle: false });
-    if (!admin.vehicle) {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    if (!admin.vehicle || admin.vehicle.id !== controlledBoat.id) {
       throw new Error('Competitor lost their assigned boat after vanilla paddle input');
+    }
+    const boatTravel = admin.vehicle.position.distanceTo(startBoatPosition);
+    if (boatTravel < 0.15) {
+      throw new Error('Vanilla boat paddle input did not move the ICE RUSH boat on blue ice; distance=' + boatTravel.toFixed(3));
     }
 
     for (const [name, bot] of [['admin', admin], ['guest', guest]]) {
@@ -125,10 +132,12 @@ async function main() {
         throw new Error(name + ' boat did not start on the track ring; radial distance=' + radius.toFixed(2));
       }
     }
-    // Simulate Shift/dismount: the server must safely remount the competitor.
+    // Simulate Shift/dismount: only this manual request is blocked during the race.
     admin.dismount();
     await new Promise(resolve => setTimeout(resolve, 600));
-    if (!admin.vehicle) throw new Error('The player remained dismounted after the server seat-repair tick');
+    if (!admin.vehicle || admin.vehicle.id !== controlledBoat.id) {
+      throw new Error('Sneak dismount was not blocked while the competitor was racing');
+    }
     await waitFor(admin, /PARKOVANIE!/);
 
     // Ask the server itself to count the real 3x3 concrete blocks.
