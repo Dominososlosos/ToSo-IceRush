@@ -783,7 +783,7 @@ public final class IceRushGame {
             if (arenaWorld != null && lobbyPosition != null) {
                 player.interactionManager.changeGameMode(GameMode.ADVENTURE);
                 teleportToLobby(player);
-                updateLobbyLeaderboard(player.getServer());
+                updateLobbyLeaderboard(player.getServerWorld().getServer());
             }
             sendLobbyMenu(player);
             return;
